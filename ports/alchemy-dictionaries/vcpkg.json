@@ -1,0 +1,7 @@
+{
+  "name": "alchemy-dictionaries",
+  "version-semver": "1.0.1-r1",
+  "description": "Hunspell spell checking dictionaries bundled with the viewer",
+  "homepage": "https://github.com/AlchemyViewer/3p-dictionaries",
+  "license": null
+}

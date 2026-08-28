@@ -1,0 +1,6 @@
+alchemy-dictionaries installs hunspell data files, not a library.
+
+    find_package(unofficial-alchemy-dictionaries CONFIG REQUIRED)
+
+sets ALCHEMY_DICTIONARIES_DIR to the flat directory holding dictionaries.xml,
+sl.dic and the .aff/.dic pair for every bundled language.
