@@ -1,0 +1,7 @@
+collada-dom provides CMake targets:
+
+    find_package(unofficial-collada-dom CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::collada-dom::collada14dom)
+
+The target carries both include roots (<dae.h> and <dom/domFoo.h> under 1.4) and
+pulls in libxml2 and minizip, which the DOM links against.
