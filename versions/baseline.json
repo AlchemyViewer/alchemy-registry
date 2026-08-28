@@ -20,6 +20,10 @@
       "baseline": "3.0.0",
       "port-version": 0
     },
+    "libndofdev": {
+      "baseline": "1.0.1",
+      "port-version": 1
+    },
     "lsl-definitions": {
       "baseline": "0.6.13.2",
       "port-version": 0

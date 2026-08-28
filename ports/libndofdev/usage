@@ -1,0 +1,4 @@
+libndofdev provides CMake targets:
+
+    find_package(unofficial-libndofdev CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::libndofdev::ndofdev)
