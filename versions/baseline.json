@@ -1,5 +1,9 @@
 {
   "default": {
+    "faudio": {
+      "baseline": "26.8",
+      "port-version": 0
+    },
     "libgrapheme": {
       "baseline": "3.0.0",
       "port-version": 0
