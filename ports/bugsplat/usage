@@ -1,0 +1,12 @@
+bugsplat provides CMake targets:
+
+    find_package(unofficial-bugsplat CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::bugsplat::bugsplat)
+
+Headers are installed under the bugsplat/ subdirectory:
+
+    #include <bugsplat/BugSplat.h>
+
+Only the release redistributable is staged beside an application, so every
+configuration links against it. find_package also sets BUGSPLAT_TOOLS_DIR to the
+directory holding BsSndRpt64.exe and the symbol upload helpers.
