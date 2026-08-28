@@ -1,0 +1,8 @@
+velopack provides CMake targets:
+
+    find_package(unofficial-velopack CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::velopack::velopack)
+
+The target carries the <velopack> include directory and the system libraries the
+rust runtime needs. The crate is built release-only, so every configuration takes
+the same binary.

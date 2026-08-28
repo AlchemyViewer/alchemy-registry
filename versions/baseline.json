@@ -52,6 +52,10 @@
       "baseline": "4.1.0",
       "port-version": 0
     },
+    "velopack": {
+      "baseline": "1.2.0",
+      "port-version": 0
+    },
     "websocketpp": {
       "baseline": "0.8.2",
       "port-version": 3
