@@ -1,0 +1,10 @@
+vlc-bin provides CMake targets:
+
+    find_package(unofficial-libvlc CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::libvlc::libvlc)
+
+unofficial::libvlc::libvlc pulls in libvlccore and the <vlc/vlc.h> include root.
+The bundle is release-only, so every configuration takes the same binary.
+
+find_package also sets VLC_PLUGINS_DIR to the codec plugin directory, which is
+loaded at runtime and has to be staged beside the executable.
