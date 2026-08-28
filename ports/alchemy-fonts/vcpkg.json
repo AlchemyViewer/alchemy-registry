@@ -1,0 +1,7 @@
+{
+  "name": "alchemy-fonts",
+  "version-semver": "2.5.0",
+  "description": "Font families bundled with the viewer",
+  "homepage": "https://github.com/AlchemyViewer/alchemy-fonts",
+  "license": "OFL-1.1 AND Bitstream-Vera AND MIT AND CC-BY-4.0"
+}

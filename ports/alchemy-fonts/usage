@@ -1,0 +1,6 @@
+alchemy-fonts installs font files, not a library.
+
+    find_package(unofficial-alchemy-fonts CONFIG REQUIRED)
+
+sets ALCHEMY_FONTS_DIR to the directory holding the faces and their per-family
+licence texts.
