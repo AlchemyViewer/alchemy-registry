@@ -1,5 +1,9 @@
 {
   "default": {
+    "apr": {
+      "baseline": "1.7.6",
+      "port-version": 1
+    },
     "faudio": {
       "baseline": "26.8",
       "port-version": 0
