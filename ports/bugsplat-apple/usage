@@ -1,0 +1,9 @@
+bugsplat-apple provides CMake targets:
+
+    find_package(unofficial-bugsplat CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::bugsplat::bugsplat)
+
+find_package also sets BUGSPLAT_FRAMEWORK_DIR to the BugSplat.framework
+bundle, which has to be embedded in the application, along with
+BUGSPLAT_FRAMEWORK_DSYM_DIR for its separated symbols and BUGSPLAT_TOOLS_DIR for
+the symbol upload helpers.

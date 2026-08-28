@@ -1,0 +1,8 @@
+{
+  "name": "bugsplat-apple",
+  "version-string": "3.6.0",
+  "description": "Bugsplat crash reporting framework for macOS",
+  "homepage": "https://github.com/BugSplat-Git/bugsplat-apple",
+  "license": null,
+  "supports": "osx"
+}

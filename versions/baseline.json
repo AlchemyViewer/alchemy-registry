@@ -24,6 +24,10 @@
       "baseline": "6.1.1.0",
       "port-version": 0
     },
+    "bugsplat-apple": {
+      "baseline": "3.6.0",
+      "port-version": 0
+    },
     "cef-bin": {
       "baseline": "151.0.7922.174",
       "port-version": 0
