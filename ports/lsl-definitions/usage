@@ -1,0 +1,6 @@
+lsl-definitions installs data files, not a library.
+
+    find_package(unofficial-lsl-definitions CONFIG REQUIRED)
+
+sets LSL_DEFINITIONS_DIR to the directory holding lsl_keywords.xml,
+lua_keywords.xml, the .yaml definitions and the Luau type stubs.
