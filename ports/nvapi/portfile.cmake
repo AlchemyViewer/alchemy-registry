@@ -1,0 +1,33 @@
+vcpkg_check_linkage(ONLY_STATIC_LIBRARY)
+
+vcpkg_from_github(
+    OUT_SOURCE_PATH SOURCE_PATH
+    REPO NVIDIA/nvapi
+    REF cd6918f60b3c9a0476fdfe7e89bb32330602049d
+    SHA512 0057ad7d80c746cf23974338776678751f66df93cd921f8640124e16366d4829429c3cb3b397f3b19579fda78a15668fb3f703fa63186ff2355e4ab78122c2cc
+    HEAD_REF main
+)
+
+file(INSTALL
+    DIRECTORY "${SOURCE_PATH}/"
+    DESTINATION "${CURRENT_PACKAGES_DIR}/include/nvapi"
+    FILES_MATCHING
+    PATTERN "*.c"
+    PATTERN "*.h"
+    PATTERN "amd64" EXCLUDE
+    PATTERN "docs" EXCLUDE
+    PATTERN "Sample_Code" EXCLUDE
+    PATTERN "x86" EXCLUDE
+)
+
+file(INSTALL "${SOURCE_PATH}/amd64/nvapi64.lib" DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
+if(NOT VCPKG_BUILD_TYPE)
+    file(INSTALL "${SOURCE_PATH}/amd64/nvapi64.lib" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/lib")
+endif()
+
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/unofficial-nvapi-config.cmake"
+     DESTINATION "${CURRENT_PACKAGES_DIR}/share/unofficial-nvapi")
+
+file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/usage" DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}")
+
+vcpkg_install_copyright(FILE_LIST "${SOURCE_PATH}/License.txt")

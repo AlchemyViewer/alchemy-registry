@@ -1,0 +1,8 @@
+nvapi provides CMake targets:
+
+    find_package(unofficial-nvapi CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::nvapi::nvapi)
+
+Headers are installed under the nvapi/ subdirectory:
+
+    #include <nvapi/nvapi.h>

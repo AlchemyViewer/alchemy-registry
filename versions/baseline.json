@@ -20,6 +20,10 @@
       "baseline": "4.2.2",
       "port-version": 0
     },
+    "nvapi": {
+      "baseline": "R610",
+      "port-version": 0
+    },
     "openjpeg": {
       "baseline": "2.5.4",
       "port-version": 30
