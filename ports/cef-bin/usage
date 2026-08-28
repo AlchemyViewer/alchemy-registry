@@ -1,0 +1,18 @@
+cef-bin provides CMake targets:
+
+    find_package(unofficial-cef CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::cef::cef)
+
+unofficial::cef::cef carries the include paths and links the libcef_dll_wrapper
+static library plus libcef itself, and is also available piecewise as
+unofficial::cef::libcef_dll_wrapper and unofficial::cef::libcef (not on Apple,
+where the framework is embedded instead).
+
+The CEF runtime is not linked, it is staged next to the executable. find_package
+sets these to the directories it lives in, empty where the platform has none:
+
+    CEF_INCLUDE_DIR         headers, for reading cef_version.h
+    CEF_RESOURCE_DIR        .pak / icudtl.dat / locales
+    CEF_BINARY_DIR_RELEASE  loader binaries (bootstrap, ANGLE, SwiftShader)
+    CEF_BINARY_DIR_DEBUG    same, falling back to release on a release-only build
+    CEF_FRAMEWORK_DIR       Chromium Embedded Framework.framework, Apple only
