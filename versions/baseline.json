@@ -7,6 +7,10 @@
     "ppqsort": {
       "baseline": "1.0.6",
       "port-version": 1
+    },
+    "tracy": {
+      "baseline": "0.14.1",
+      "port-version": 0
     }
   }
 }
