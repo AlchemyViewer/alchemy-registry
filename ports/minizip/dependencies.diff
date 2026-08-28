@@ -1,0 +1,31 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 9b4cfcd..7a13e84 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -282,7 +282,7 @@
+ 
+         list(APPEND MINIZIP_LIB BZip2::BZip2)
+ 
+-        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lbz2")
++        set(PC_PRIVATE_DEPS "${PC_PRIVATE_DEPS} bzip2")
+     elseif(MZ_FETCH_LIBS)
+         clone_repo(bzip2 https://sourceware.org/git/bzip2.git master)
+ 
+@@ -334,7 +334,7 @@
+ 
+         list(APPEND MINIZIP_LIB LibLZMA::LibLZMA)
+ 
+-        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -llzma")
++        set(PC_PRIVATE_DEPS "${PC_PRIVATE_DEPS} liblzma")
+     elseif(MZ_FETCH_LIBS)
+         set(BUILD_TESTING OFF CACHE BOOL "Build lzma tests" FORCE)
+ 
+@@ -411,7 +411,7 @@
+             list(APPEND MINIZIP_LIB zstd::libzstd_static)
+         endif()
+ 
+-        set(PC_PRIVATE_LIBS "${PC_PRIVATE_LIBS} -lzstd")
++        set(PC_PRIVATE_DEPS "${PC_PRIVATE_DEPS} libzstd")
+     elseif(MZ_FETCH_LIBS)
+         set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "Build zstd programs")
+ 
