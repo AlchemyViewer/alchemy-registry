@@ -12,6 +12,10 @@
       "baseline": "2.5.0",
       "port-version": 0
     },
+    "alsa": {
+      "baseline": "1.2.15.3",
+      "port-version": 2
+    },
     "apr": {
       "baseline": "1.7.6",
       "port-version": 1
@@ -27,6 +31,10 @@
     "curl": {
       "baseline": "7.54.1",
       "port-version": 0
+    },
+    "dbus": {
+      "baseline": "1.16.2",
+      "port-version": 5
     },
     "faudio": {
       "baseline": "26.8",
@@ -64,9 +72,17 @@
       "baseline": "2.5.4",
       "port-version": 30
     },
+    "pipewire": {
+      "baseline": "1.6.3",
+      "port-version": 1
+    },
     "ppqsort": {
       "baseline": "1.0.6",
       "port-version": 1
+    },
+    "pulseaudio": {
+      "baseline": "17.0",
+      "port-version": 4
     },
     "secondlife-emoji-shortcodes": {
       "baseline": "17.0.0",
