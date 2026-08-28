@@ -1,0 +1,62 @@
+diff --git a/media/engine/webrtc_voice_engine.cc b/media/engine/webrtc_voice_engine.cc
+--- a/media/engine/webrtc_voice_engine.cc
++++ b/media/engine/webrtc_voice_engine.cc
+@@ -647,53 +647,11 @@
+   }
+ #endif
+ 
+-  if (options.echo_cancellation) {
+-    // Check if platform supports built-in EC. Currently only supported on
+-    // Android and in combination with Java based audio layer.
+-    // TODO(henrika): investigate possibility to support built-in EC also
+-    // in combination with Open SL ES audio.
+-    const bool built_in_aec = adm()->BuiltInAECIsAvailable();
+-    if (built_in_aec) {
+-      // Built-in EC exists on this device. Enable/Disable it according to the
+-      // echo_cancellation audio option.
+-      const bool enable_built_in_aec = *options.echo_cancellation;
+-      if (adm()->EnableBuiltInAEC(enable_built_in_aec) == 0 &&
+-          enable_built_in_aec) {
+-        // Disable internal software EC if built-in EC is enabled,
+-        // i.e., replace the software EC with the built-in EC.
+-        options.echo_cancellation = false;
+-        RTC_LOG(LS_INFO)
+-            << "Disabling EC since built-in EC will be used instead";
+-      }
+-    }
+-  }
+-
+-  if (options.auto_gain_control) {
+-    bool built_in_agc_avaliable = adm()->BuiltInAGCIsAvailable();
+-    if (built_in_agc_avaliable) {
+-      if (adm()->EnableBuiltInAGC(*options.auto_gain_control) == 0 &&
+-          *options.auto_gain_control) {
+-        // Disable internal software AGC if built-in AGC is enabled,
+-        // i.e., replace the software AGC with the built-in AGC.
+-        options.auto_gain_control = false;
+-        RTC_LOG(LS_INFO)
+-            << "Disabling AGC since built-in AGC will be used instead";
+-      }
+-    }
+-  }
+-
+-  if (options.noise_suppression) {
+-    if (adm()->BuiltInNSIsAvailable()) {
+-      bool builtin_ns = *options.noise_suppression;
+-      if (adm()->EnableBuiltInNS(builtin_ns) == 0 && builtin_ns) {
+-        // Disable internal software NS if built-in NS is enabled,
+-        // i.e., replace the software NS with the built-in NS.
+-        options.noise_suppression = false;
+-        RTC_LOG(LS_INFO)
+-            << "Disabling NS since built-in NS will be used instead";
+-      }
+-    }
+-  }
++  // Platform echo cancellation, gain control and noise suppression are left
++  // alone here. The caller owns that choice and turns them off explicitly so
++  // that the software audio processing configured on the module is the only
++  // one running; letting the engine hand any stage over to the platform would
++  // silently disable its software counterpart instead.
+ 
+   if (options.stereo_swapping) {
+     audio_state()->SetStereoChannelSwapping(*options.stereo_swapping);

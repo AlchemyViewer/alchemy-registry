@@ -1,0 +1,18 @@
+diff --git a/audio/audio_transport_impl.cc b/audio/audio_transport_impl.cc
+--- a/audio/audio_transport_impl.cc
++++ b/audio/audio_transport_impl.cc
+@@ -166,8 +166,12 @@
+   bool swap_stereo_channels = false;
+   {
+     MutexLock lock(&capture_lock_);
+-    send_sample_rate_hz = send_sample_rate_hz_;
+-    send_num_channels = send_num_channels_;
++    // With no senders attached the cached send format has not been set yet;
++    // fall back to the format the device actually delivered so the capture
++    // frame is initialized at the right rate.
++    const bool has_senders = !audio_senders_.empty();
++    send_sample_rate_hz = has_senders ? send_sample_rate_hz_ : sample_rate;
++    send_num_channels = has_senders ? send_num_channels_ : number_of_channels;
+     swap_stereo_channels = swap_stereo_channels_;
+   }
+ 

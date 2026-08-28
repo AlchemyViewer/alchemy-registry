@@ -1,0 +1,22 @@
+diff --git a/media/engine/webrtc_voice_engine.cc b/media/engine/webrtc_voice_engine.cc
+--- a/media/engine/webrtc_voice_engine.cc
++++ b/media/engine/webrtc_voice_engine.cc
+@@ -1775,11 +1775,18 @@ bool WebRtcVoiceSendChannel::MuteStream(uint32_t ssrc, bool muted) {
+   // This implementation is not ideal, instead we should signal the AGC when
+   // the mic channel is muted/unmuted. We can't do it today because there
+   // is no good way to know which stream is mapping to the mic channel.
+   bool all_muted = muted;
+   for (const auto& kv : send_streams_) {
+     all_muted = all_muted && kv.second->muted();
+   }
++
++  // One AudioProcessing module is shared by every voice media channel, so
++  // muting it once this channel's own streams are all muted would mute the
++  // channels that are not. Leave audio processing running until there is a
++  // way to tell that every channel is muted.
++  all_muted = false;
++
+   AudioProcessing* ap = engine()->apm();
+   if (ap) {
+     ap->set_output_will_be_muted(all_muted);
+   }

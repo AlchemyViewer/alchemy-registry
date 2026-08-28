@@ -1,0 +1,19 @@
+diff --git a/modules/audio_device/audio_device_buffer.cc b/modules/audio_device/audio_device_buffer.cc
+--- a/modules/audio_device/audio_device_buffer.cc
++++ b/modules/audio_device/audio_device_buffer.cc
+@@ -104,9 +104,13 @@
+     AudioTransport* audio_callback) {
+   RTC_DCHECK_RUN_ON(&main_thread_checker_);
+   RTC_DLOG(LS_INFO) << __FUNCTION__;
++  // The viewer keeps the device module running for the whole voice session and
++  // drives playout and capture itself, so the engine routinely registers its
++  // transport after media has started. Refusing it there leaves the module with
++  // no transport at all: nothing captured reaches the engine, and the render
++  // stream is fed nothing.
+   if (playing_ || recording_) {
+-    RTC_LOG(LS_ERROR) << "Failed to set audio transport since media was active";
+-    return -1;
++    RTC_LOG(LS_WARNING) << "Setting audio transport while media is active";
+   }
+   audio_transport_cb_ = audio_callback;
+   return 0;
