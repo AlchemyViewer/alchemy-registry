@@ -1,0 +1,17 @@
+{
+  "name": "libgrapheme",
+  "version": "3.0.0",
+  "description": "Unicode string library implementing UAX #29 segmentation, UAX #14 line breaking and case conversion.",
+  "homepage": "https://libs.suckless.org/libgrapheme/",
+  "license": "ISC",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}

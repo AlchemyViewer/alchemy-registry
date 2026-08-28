@@ -1,5 +1,9 @@
 {
   "default": {
+    "libgrapheme": {
+      "baseline": "3.0.0",
+      "port-version": 0
+    },
     "md4c": {
       "baseline": "2026-06-17",
       "port-version": 0
