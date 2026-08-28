@@ -1,3 +1,8 @@
 {
-  "default": {}
+  "default": {
+    "md4c": {
+      "baseline": "2026-06-17",
+      "port-version": 0
+    }
+  }
 }
