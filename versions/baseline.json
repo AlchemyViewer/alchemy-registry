@@ -40,6 +40,10 @@
       "baseline": "R610",
       "port-version": 0
     },
+    "open-libndofdev": {
+      "baseline": "0.14-r7",
+      "port-version": 0
+    },
     "openjpeg": {
       "baseline": "2.5.4",
       "port-version": 30
