@@ -12,6 +12,10 @@
       "baseline": "2026-06-17",
       "port-version": 0
     },
+    "openjpeg": {
+      "baseline": "2.5.4",
+      "port-version": 30
+    },
     "ppqsort": {
       "baseline": "1.0.6",
       "port-version": 1
