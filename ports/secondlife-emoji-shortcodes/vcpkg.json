@@ -1,0 +1,8 @@
+{
+  "name": "secondlife-emoji-shortcodes",
+  "version": "17.0.0",
+  "port-version": 2,
+  "description": "Emoji shortcode and category data generated into viewer XUI",
+  "homepage": "https://github.com/milesj/emojibase",
+  "license": "MIT"
+}

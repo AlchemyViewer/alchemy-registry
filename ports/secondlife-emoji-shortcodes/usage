@@ -1,0 +1,6 @@
+secondlife-emoji-shortcodes installs generated XUI data, not a library.
+
+    find_package(unofficial-emoji-shortcodes CONFIG REQUIRED)
+
+sets EMOJI_SHORTCODES_XUI_DIR to a directory holding one language subdirectory
+per shipped locale, each containing emoji_characters.xml.
