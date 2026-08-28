@@ -19,10 +19,10 @@ set(WEBRTC_PATCHES
     webrtc-0005-use-external-openssl.patch
     webrtc-0006-make-dav1d-decoder-deps-conditional.patch
     webrtc-0007-fix-rtp-packet-info-eq-for-msvc.patch
-    webrtc-0008-fix-audio-device-core-win-goto-scope.patch
     webrtc-0009-fix-avx2-intrinsics-for-msvc.patch
     webrtc-0010-fix-denormal-disabler-for-msvc.patch
     webrtc-0011-make-linux-audio-backends-optional.patch
+    webrtc-0012-drop-unsupported-dotfile-setting.patch
     # Audio behaviour carried from secondlife/3p-webrtc-build's build/patches,
     # re-anchored onto this revision.
     alchemy-0001-windows-192khz-device-formats.patch
@@ -43,8 +43,7 @@ set(WEBRTC_PATCHES
 set(BUILD_PATCHES
     build-0001-drop-module-deps-from-toolchain-invocations.patch
     build-0002-fix-apple-arflags-usage.patch
-    build-0004-disable-sanitize-c-array-bounds.patch
-    build-0005-disable-sanitize-return.patch
+    build-0004-disable-ubsan-hardening.patch
     build-0006-skip-local-vs-debugger-copy.patch
     build-0007-fix-windows-pdb-commands.patch
     build-0008-disable-crel-on-linux-arm64.patch
@@ -55,25 +54,27 @@ set(BUILD_PATCHES
     # Instead I see a list = []
     build-0010-use-none.patch
     build-0011-do-not-detect-vs-path.patch
+    build-0012-drop-split-dwarf-additional-outputs.patch
 )
 
 set(WEBRTC_SOURCE_URL "https://webrtc.googlesource.com/src")
-set(WEBRTC_SOURCE_REF "aa217206b9ce8b929dc56d112d670a5931ef8cc1")
+# WebRTC M151, the head of branch-heads/7922.
+set(WEBRTC_SOURCE_REF "f20ebb8adbf4fa781830e4384c61f732bd28a217")
 
 include("${CMAKE_CURRENT_LIST_DIR}/webrtc-functions.cmake")
 
-set(WEBRTC_CHROMIUM_THIRD_PARTY_REF "7048751cc7450f6e937418379d2a95551973625f")
+set(WEBRTC_CHROMIUM_THIRD_PARTY_REF "f9be95e943a95f6a978e07ef6ef1439be99590aa")
 
 declare_webrtc_repo(build
     DESTINATION "build"
     URL "https://chromium.googlesource.com/chromium/src/build"
-    REF "f123ee3617656ae843bd7f68f173c651fe2ec4bf"
+    REF "8edf031b7f329916f82f99e0b27e8e265760cbae"
     PATCHES_VAR BUILD_PATCHES
 )
 declare_webrtc_repo(buildtools
     DESTINATION "buildtools"
     URL "https://chromium.googlesource.com/chromium/src/buildtools"
-    REF "95ed44cf5f06dbb5861030b91c9db9ccb4316762"
+    REF "0d39be5a3f129cf1f35e7812108a2184e2193315"
 )
 
 declare_webrtc_generated_external(third_party_root PHASE pre_absl)
@@ -89,6 +90,7 @@ declare_webrtc_generated_external(pffft LIB_ROOT_VAR PFFFT_LIB_ROOT)
 declare_webrtc_generated_external(alsa)
 declare_webrtc_generated_external(pulseaudio)
 declare_webrtc_generated_external(dav1d)
+declare_webrtc_generated_external(libgav1)
 declare_webrtc_generated_external(llvm-libc)
 declare_webrtc_generated_external(protobuf)
 declare_webrtc_generated_external(googletest)
@@ -522,6 +524,7 @@ foreach(BUILD_CONFIG IN LISTS WEBRTC_BUILD_CONFIGS)
         "use_glib=false"
         "enable_rust=false"
         "enable_rust_cxx=false"
+        "rtc_rust=false"
         "rtc_use_h264=false"
     )
     if(WEBRTC_TARGET_IS_LINUX)

@@ -1,13 +1,11 @@
 diff --git a/vs_toolchain.py b/vs_toolchain.py
-index 5d83b6c..d82417b 100644
+index 7c62254..182aa37 100755
 --- a/vs_toolchain.py
 +++ b/vs_toolchain.py
-@@ -468,7 +468,10 @@ def _CopyDebugger(target_dir, target_cpu):
-   debug_files = [('dbghelp.dll', False), ('dbgcore.dll', True),
+@@ -472,8 +472,11 @@ def _CopyDebugger(target_dir, target_cpu):
                   ('symsrv.dll', True)]
    for debug_file, is_optional in debug_files:
--    full_path = os.path.join(win_sdk_dir, 'Debuggers', target_cpu, debug_file)
-+    full_path = os.path.join(win_sdk_dir, 'Debuggers', target_cpu, debug_file)
+     full_path = os.path.join(win_sdk_dir, 'Debuggers', target_cpu, debug_file)
 +    local_toolchain = not bool(
 +        int(os.environ.get('DEPOT_TOOLS_WIN_TOOLCHAIN', '1'))
 +    )

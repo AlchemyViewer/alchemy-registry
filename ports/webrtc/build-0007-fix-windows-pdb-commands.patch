@@ -1,8 +1,8 @@
 diff --git a/toolchain/win/toolchain.gni b/toolchain/win/toolchain.gni
-index c39430d6d..2c9a5e034 100644
+index 6f1694f..cbf89f3 100644
 --- a/toolchain/win/toolchain.gni
 +++ b/toolchain/win/toolchain.gni
-@@ -220,7 +220,6 @@ template("msvc_toolchain") {
+@@ -223,7 +223,6 @@ template("msvc_toolchain") {
  
      tool("cc") {
        precompiled_header_type = "msvc"
@@ -10,12 +10,12 @@ index c39430d6d..2c9a5e034 100644
  
        # Label names may have spaces in them so the pdbname must be quoted. The
        # source and output don't need to be quoted because GN knows they're a
-@@ -231,11 +230,10 @@ template("msvc_toolchain") {
+@@ -234,11 +233,10 @@ template("msvc_toolchain") {
  
        # Note that the code coverage wrapper scripts assumes that {{source}}
        # comes immediately after /c.
--      command = "$coverage_wrapper$env_wrapper$cl /c {{source}} /nologo $show_includes $sys_include_flags{{defines}} {{include_dirs}} {{cflags}} {{cflags_c}} /Fo{{output}} /Fd\"$pdbname\""
-+      command = "$coverage_wrapper$env_wrapper$cl /c {{source}} /nologo $show_includes $sys_include_flags{{defines}} {{include_dirs}} {{cflags}} {{cflags_c}} /Fo{{output}} /Fd\"{{target_out_dir}}/{{label_name}}_c.pdb\""
+-      command = "$coverage_wrapper$env_wrapper$cl /c {{source}} /nologo $show_includes $sys_include_flags{{defines}} {{include_dirs}} {{cflags}} {{cflags_c}}${module_name_flag} /Fo{{output}} /Fd\"$pdbname\""
++      command = "$coverage_wrapper$env_wrapper$cl /c {{source}} /nologo $show_includes $sys_include_flags{{defines}} {{include_dirs}} {{cflags}} {{cflags_c}}${module_name_flag} /Fo{{output}} /Fd\"{{target_out_dir}}/{{label_name}}_c.pdb\""
      }
  
      tool("cxx_module") {
@@ -23,7 +23,7 @@ index c39430d6d..2c9a5e034 100644
        depsformat = "msvc"
        description = "CXX_MODULE {{output}}"
        outputs = [ "$object_subdir/{{source_name_part}}.pcm" ]
-@@ -246,7 +244,6 @@ template("msvc_toolchain") {
+@@ -249,7 +247,6 @@ template("msvc_toolchain") {
        precompiled_header_type = "msvc"
  
        # The PDB name needs to be different between C and C++ compiled files.
@@ -31,12 +31,12 @@ index c39430d6d..2c9a5e034 100644
  
        # See comment in CC tool about quoting.
        depsformat = "msvc"
-@@ -255,7 +252,7 @@ template("msvc_toolchain") {
+@@ -258,7 +255,7 @@ template("msvc_toolchain") {
  
        # Note that the code coverage wrapper scripts assumes that {{source}}
        # comes immediately after /c.
--      command = "$coverage_wrapper$env_wrapper$cl /c {{source}} /Fo{{output}} /nologo $show_includes $sys_include_flags{{defines}} {{include_dirs}} {{cflags}} /TP {{cflags_cc}} /Fd\"$pdbname\""
-+      command = "$coverage_wrapper$env_wrapper$cl /c {{source}} /Fo{{output}} /nologo $show_includes $sys_include_flags{{defines}} {{include_dirs}} {{cflags}} /TP {{cflags_cc}} /Fd\"{{target_out_dir}}/{{label_name}}_cc.pdb\""
+-      command = "$coverage_wrapper$env_wrapper$cl /c {{source}} /Fo{{output}} /nologo $show_includes $sys_include_flags{{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} /TP ${module_name_flag} /Fd\"$pdbname\""
++      command = "$coverage_wrapper$env_wrapper$cl /c {{source}} /Fo{{output}} /nologo $show_includes $sys_include_flags{{defines}} {{include_dirs}} {{cflags}} {{cflags_cc}} /TP ${module_name_flag} /Fd\"{{target_out_dir}}/{{label_name}}_cc.pdb\""
      }
  
      tool("rc") {

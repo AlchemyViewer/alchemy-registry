@@ -1,0 +1,15 @@
+diff --git a/config/sanitizers/sanitizers.gni b/config/sanitizers/sanitizers.gni
+index 3fd0b39..f4851c5 100644
+--- a/config/sanitizers/sanitizers.gni
++++ b/config/sanitizers/sanitizers.gni
+@@ -530,6 +530,10 @@ template("ubsan_hardening") {
+       _condition = invoker.condition
+     }
+ 
++    # The trap flags below are Chromium-clang extensions, and the compilers
++    # this is built with reject them.
++    _condition = false
++
+     if (_condition && !is_ubsan && is_clang) {
+       cflags = [
+         "-fsanitize=${invoker.sanitizer}",

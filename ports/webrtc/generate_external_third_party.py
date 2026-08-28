@@ -299,7 +299,6 @@ TEST_MAIN_CC = """int main(int argc, char** argv) {
 """
 
 LIBAOM_OPTIONS_GNI = """import("//build/config/cast.gni")
-import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/gclient_args.gni")
 
 declare_args() {
@@ -341,6 +340,18 @@ LIBAOM_AOMCX_H = """#pragma once
 #ifndef AOM_EFLAG_FREEZE_INTERNAL_STATE
 #define AOM_EFLAG_FREEZE_INTERNAL_STATE 0
 #endif
+"""
+
+LIBGAV1_BUILD_GN = """config("libgav1_public_config") {
+}
+
+group("libgav1_decoder") {
+  public_configs = [ ":libgav1_public_config" ]
+}
+
+group("libgav1_parser") {
+  public_configs = [ ":libgav1_public_config" ]
+}
 """
 
 PROTOBUF_BUILD_GN = """config("protobuf_config") {
@@ -647,6 +658,13 @@ source_set("libsrtp") {
         "dirs": [],
         "files": {
             "BUILD.gn": make_trivial_group_build_gn("dav1d"),
+        },
+    },
+    "libgav1": {
+        "relative_root": "third_party/libgav1",
+        "dirs": [],
+        "files": {
+            "BUILD.gn": LIBGAV1_BUILD_GN,
         },
     },
     "llvm-libc": {
