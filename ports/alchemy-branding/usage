@@ -1,0 +1,7 @@
+alchemy-branding installs artwork, not a library.
+
+    find_package(unofficial-alchemy-branding CONFIG REQUIRED)
+
+sets ALCHEMY_BRANDING_DIR and, beneath it, ALCHEMY_BRANDING_VIEWER_DIR for
+assets the running client uses and ALCHEMY_BRANDING_INSTALLER_DIR for assets
+the packaging step uses.
