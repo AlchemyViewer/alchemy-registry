@@ -23,6 +23,8 @@ set(WEBRTC_PATCHES
     webrtc-0010-fix-denormal-disabler-for-msvc.patch
     webrtc-0011-make-linux-audio-backends-optional.patch
     webrtc-0012-drop-unsupported-dotfile-setting.patch
+    # GCC 16: method name Network() collides with return type Network (-Wchanges-meaning).
+    webrtc-0013-qualify-port-interface-network.patch
     # Audio behaviour carried from secondlife/3p-webrtc-build's build/patches,
     # re-anchored onto this revision.
     alchemy-0001-windows-192khz-device-formats.patch
@@ -55,6 +57,8 @@ set(BUILD_PATCHES
     build-0010-use-none.patch
     build-0011-do-not-detect-vs-path.patch
     build-0012-drop-split-dwarf-additional-outputs.patch
+    # GN < Mar 2026 lacks tool() inputs; Chromium build requires it for alink.
+    build-0013-drop-alink-ar-inputs.patch
 )
 
 set(WEBRTC_SOURCE_URL "https://webrtc.googlesource.com/src")
