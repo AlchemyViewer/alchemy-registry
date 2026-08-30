@@ -59,6 +59,7 @@ set(BUILD_PATCHES
     build-0012-drop-split-dwarf-additional-outputs.patch
     # GN < Mar 2026 lacks tool() inputs; Chromium build requires it for alink.
     build-0013-drop-alink-ar-inputs.patch
+    build-0014-skip-inlining-chain-diagnostic-on-apple.patch
 )
 
 set(WEBRTC_SOURCE_URL "https://webrtc.googlesource.com/src")
@@ -558,7 +559,6 @@ foreach(BUILD_CONFIG IN LISTS WEBRTC_BUILD_CONFIGS)
             "is_clang=true"
             "clang_base_path=\"${WEBRTC_CLANG_BASE_PATH}\""
             "clang_version=\"${WEBRTC_CLANG_VERSION}\""
-            "mac_sdk_path=\"${WEBRTC_MAC_SDK_PATH}\""
         )
     elseif(WEBRTC_TARGET_IS_WINDOWS)
         list(APPEND WEBRTC_GN_ARGS
