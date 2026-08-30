@@ -1,0 +1,19 @@
+diff --git a/toolchain/gcc_toolchain.gni b/toolchain/gcc_toolchain.gni
+index 4d74e6a..f4d2326 100644
+--- a/toolchain/gcc_toolchain.gni
++++ b/toolchain/gcc_toolchain.gni
+@@ -406,12 +406,8 @@ template("single_gcc_toolchain") {
+       } else {
+         command = "rm -f {{output}} && $command"
+ 
+-        # Add ar to inputs if it's not from $PATH. Some toolchains leave
+-        # |ar| empty during toolchain setup, so guard get_path_info() here.
+-        if (ar != "" && get_path_info(ar, "file") != ar) {
+-          inputs =
+-              [ get_path_info(rebase_path(ar, ".", root_out_dir), "abspath") ]
+-        }
++        # Dropped: tool() inputs requires GN >= Mar 2026; vcpkg-tool-gn
++        # 2025-08-05 does not support it (Assignment had no effect).
+       }
+ 
+       # Almost all targets build with //build/config/compiler:thin_archive which
