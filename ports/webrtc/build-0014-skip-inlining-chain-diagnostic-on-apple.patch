@@ -1,0 +1,15 @@
+diff --git a/config/compiler/BUILD.gn b/config/compiler/BUILD.gn
+index 9ca9b75..4b918cf 100644
+--- a/config/compiler/BUILD.gn
++++ b/config/compiler/BUILD.gn
+@@ -577,8 +577,8 @@ config("compiler") {
+     # Flags for diagnostics.
+     cflags += [ "-fcolor-diagnostics" ]
+     if (!is_wasm) {
+-      if (!is_win) {
++      if (!is_win && !is_apple) {
+         cflags += [ "-fdiagnostics-show-inlining-chain" ]
+-      } else {
++      } else if (is_win) {
+         # Combine after https://github.com/llvm/llvm-project/pull/192241
+         cflags += [ "/clang:-fdiagnostics-show-inlining-chain" ]
