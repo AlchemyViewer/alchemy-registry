@@ -1,0 +1,57 @@
+--- src/FAudio_internal.c	2026-08-01 16:26:07.000000000 +0100
++++ /var/home/crystalyne/Projects/Alchemy/Alchemy/vcpkg/buildtrees/faudio/src/26.08-c8b7bb26bf.clean/src/FAudio_internal.c	2026-09-03 10:44:40.641943958 +0100
+@@ -644,7 +644,15 @@
+ 	LOG_FUNC_ENTER(voice->audio)
+ 
+ 	/* This should never go past the max ratio size */
+-	FAudio_assert(*toDecode <= voice->src.decodeSamples);
++	if (*toDecode > voice->audio->decodeSamples)
++	{
++	    voice->audio->decodeSamples = *toDecode;
++	    voice->audio->decoded_audio = (float*) voice->audio->pRealloc(
++	        voice->audio->decoded_audio,
++	        sizeof(float) * voice->audio->decodeSamples
++	        * voice->src.format->nChannels
++	    );
++	}
+ 
+ 	while (decoded < *toDecode && voice->src.queued_buffer_count)
+ 	{
+@@ -1006,8 +1014,12 @@
+ 		fixed_offset = (fixed_offset + FIXED_FRACTION_MASK) & ~FIXED_FRACTION_MASK;
+ 
+ 		/* The number of samples we need is that offset, plus one
+-		 * (for 0-indexing; we are converting an offset to a count). */
+-		toDecode = (fixed_offset >> FIXED_PRECISION) + 1 - voice->src.totalSamples;
++		 * (for 0-indexing; we are converting an offset to a count).
++		 * Use a signed intermediate to guard against underflow wrapping. */
++		{
++			int64_t samples_needed = (fixed_offset >> FIXED_PRECISION) + 1 - (int64_t) voice->src.totalSamples;
++			toDecode = (samples_needed > 0) ? (uint64_t) samples_needed : 0;
++		}
+ 	}
+ 
+ 	/* First voice callback */
+--- src/FAudio.c	2026-08-01 16:26:07.000000000 +0100
++++ /var/home/crystalyne/Projects/Alchemy/Alchemy/vcpkg/buildtrees/faudio/src/26.08-c8b7bb26bf.clean/src/FAudio.c	2026-09-03 21:43:44.930685652 +0100
+@@ -3060,11 +3060,20 @@
+ 		return 0;
+ 	}
+ 
++	/* sourceLock guards freqRatio against a race with the mix thread, which
++	 * releases sourceLock briefly during OnVoiceProcessingPassStart before
++	 * re-reading freqRatio to recalculate resampleStep. Without this lock,
++	 * a FAUDIO_COMMIT_NOW call from any thread can write freqRatio into that
++	 * window and produce an inconsistent toDecode calculation. */
++	FAudio_PlatformLockMutex(voice->audio->sourceLock);
++	LOG_MUTEX_LOCK(voice->audio, voice->audio->sourceLock)
+ 	voice->src.freqRatio = FAudio_clamp(
+ 		Ratio,
+ 		FAUDIO_MIN_FREQ_RATIO,
+ 		voice->src.maxFreqRatio
+ 	);
++	FAudio_PlatformUnlockMutex(voice->audio->sourceLock);
++	LOG_MUTEX_UNLOCK(voice->audio, voice->audio->sourceLock)
+ 	LOG_API_EXIT(voice->audio)
+ 	return 0;
+ }
