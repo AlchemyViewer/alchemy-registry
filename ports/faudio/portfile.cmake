@@ -14,6 +14,9 @@ vcpkg_from_github(
         # field; force the static curve instances in F3DAudio.c / FACT3D.c
         # to pointer alignment so the link succeeds.
         apple-arm64-curve-alignment.patch
+        # Guard against uint64_t underflow in toDecode calculation when the
+        # frequency ratio changes between mix calls.
+        fix-todecode-underflow.patch
 )
 
 set(options "")

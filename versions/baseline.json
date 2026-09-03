@@ -46,7 +46,7 @@
     },
     "faudio": {
       "baseline": "26.8",
-      "port-version": 0
+      "port-version": 1
     },
     "libgrapheme": {
       "baseline": "3.0.0",
