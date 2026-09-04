@@ -1,48 +1,17 @@
---- src/FAudio_internal.c	2026-08-01 16:26:07.000000000 +0100
-+++ /var/home/crystalyne/Projects/Alchemy/Alchemy/vcpkg/buildtrees/faudio/src/26.08-c8b7bb26bf.clean/src/FAudio_internal.c	2026-09-03 10:44:40.641943958 +0100
-@@ -644,7 +644,15 @@
- 	LOG_FUNC_ENTER(voice->audio)
- 
- 	/* This should never go past the max ratio size */
--	FAudio_assert(*toDecode <= voice->src.decodeSamples);
-+	if (*toDecode > voice->audio->decodeSamples)
-+	{
-+	    voice->audio->decodeSamples = *toDecode;
-+	    voice->audio->decoded_audio = (float*) voice->audio->pRealloc(
-+	        voice->audio->decoded_audio,
-+	        sizeof(float) * voice->audio->decodeSamples
-+	        * voice->src.format->nChannels
-+	    );
-+	}
- 
- 	while (decoded < *toDecode && voice->src.queued_buffer_count)
- 	{
-@@ -1006,8 +1014,12 @@
- 		fixed_offset = (fixed_offset + FIXED_FRACTION_MASK) & ~FIXED_FRACTION_MASK;
- 
- 		/* The number of samples we need is that offset, plus one
--		 * (for 0-indexing; we are converting an offset to a count). */
--		toDecode = (fixed_offset >> FIXED_PRECISION) + 1 - voice->src.totalSamples;
-+		 * (for 0-indexing; we are converting an offset to a count).
-+		 * Use a signed intermediate to guard against underflow wrapping. */
-+		{
-+			int64_t samples_needed = (fixed_offset >> FIXED_PRECISION) + 1 - (int64_t) voice->src.totalSamples;
-+			toDecode = (samples_needed > 0) ? (uint64_t) samples_needed : 0;
-+		}
- 	}
- 
- 	/* First voice callback */
---- src/FAudio.c	2026-08-01 16:26:07.000000000 +0100
-+++ /var/home/crystalyne/Projects/Alchemy/Alchemy/vcpkg/buildtrees/faudio/src/26.08-c8b7bb26bf.clean/src/FAudio.c	2026-09-03 21:43:44.930685652 +0100
-@@ -3060,11 +3060,20 @@
+diff --git a/src/FAudio.c b/src/FAudio.c
+index 18d9eb5..7a0b25f 100644
+--- a/src/FAudio.c
++++ b/src/FAudio.c
+@@ -3061,11 +3061,21 @@ uint32_t FAudioSourceVoice_SetFrequencyRatio(
  		return 0;
  	}
  
 +	/* sourceLock guards freqRatio against a race with the mix thread, which
 +	 * releases sourceLock briefly during OnVoiceProcessingPassStart before
-+	 * re-reading freqRatio to recalculate resampleStep. Without this lock,
-+	 * a FAUDIO_COMMIT_NOW call from any thread can write freqRatio into that
-+	 * window and produce an inconsistent toDecode calculation. */
++	 * re-reading freqRatio to recalculate resampleStep. Without this lock a
++	 * FAUDIO_COMMIT_NOW call from any thread can write freqRatio into that
++	 * window and produce an inconsistent toDecode calculation.
++	 */
 +	FAudio_PlatformLockMutex(voice->audio->sourceLock);
 +	LOG_MUTEX_LOCK(voice->audio, voice->audio->sourceLock)
  	voice->src.freqRatio = FAudio_clamp(
@@ -55,3 +24,59 @@
  	LOG_API_EXIT(voice->audio)
  	return 0;
  }
+diff --git a/src/FAudio_internal.c b/src/FAudio_internal.c
+index c193ff5..b3bb707 100644
+--- a/src/FAudio_internal.c
++++ b/src/FAudio_internal.c
+@@ -643,8 +643,22 @@ static void FAudio_INTERNAL_DecodeBuffers(
+ 
+ 	LOG_FUNC_ENTER(voice->audio)
+ 
+-	/* This should never go past the max ratio size */
+-	FAudio_assert(*toDecode <= voice->src.decodeSamples);
++	/* This should never go past the max ratio size, but a freqRatio change
++	 * can race the mix thread and ask for more than the decode buffer
++	 * currently holds. Grow the buffer rather than abort. Note that
++	 * sourceLock is already held here, so resize_decoded_audio_buffer()
++	 * (which takes it) must not be used.
++	 */
++	if ((*toDecode * voice->src.format->nChannels) > voice->audio->decodeSamples)
++	{
++		voice->audio->decodeSamples = (uint32_t) (
++			*toDecode * voice->src.format->nChannels
++		);
++		voice->audio->decoded_audio = (float*) voice->audio->pRealloc(
++			voice->audio->decoded_audio,
++			sizeof(float) * voice->audio->decodeSamples
++		);
++	}
+ 
+ 	while (decoded < *toDecode && voice->src.queued_buffer_count)
+ 	{
+@@ -934,6 +948,7 @@ static void FAudio_INTERNAL_MixSource(FAudioSourceVoice *voice)
+ 	uint32_t i;
+ 	/* Decode/Resample variables */
+ 	uint64_t toDecode;
++	int64_t samples_needed;
+ 	uint64_t toResample;
+ 	/* Output mix variables */
+ 	float *stream;
+@@ -1006,8 +1021,16 @@ static void FAudio_INTERNAL_MixSource(FAudioSourceVoice *voice)
+ 		fixed_offset = (fixed_offset + FIXED_FRACTION_MASK) & ~FIXED_FRACTION_MASK;
+ 
+ 		/* The number of samples we need is that offset, plus one
+-		 * (for 0-indexing; we are converting an offset to a count). */
+-		toDecode = (fixed_offset >> FIXED_PRECISION) + 1 - voice->src.totalSamples;
++		 * (for 0-indexing; we are converting an offset to a count).
++		 * A freqRatio change can leave fixed_offset behind totalSamples,
++		 * so use a signed intermediate and clamp to zero rather than let
++		 * the unsigned subtraction wrap.
++		 */
++		samples_needed = (
++			(int64_t) (fixed_offset >> FIXED_PRECISION) + 1 -
++			(int64_t) voice->src.totalSamples
++		);
++		toDecode = (samples_needed > 0) ? (uint64_t) samples_needed : 0;
+ 	}
+ 
+ 	/* First voice callback */
