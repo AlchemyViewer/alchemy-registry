@@ -100,6 +100,10 @@
       "baseline": "17.0.0",
       "port-version": 2
     },
+    "sentry-cocoa": {
+      "baseline": "9.27.0",
+      "port-version": 0
+    },
     "tinygltf": {
       "baseline": "3.0.0",
       "port-version": 1
