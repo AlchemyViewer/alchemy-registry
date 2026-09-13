@@ -42,7 +42,7 @@
     },
     "dbus": {
       "baseline": "1.16.2",
-      "port-version": 5
+      "port-version": 6
     },
     "faudio": {
       "baseline": "26.9",
