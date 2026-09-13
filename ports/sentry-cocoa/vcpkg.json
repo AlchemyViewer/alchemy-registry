@@ -1,0 +1,8 @@
+{
+  "name": "sentry-cocoa",
+  "version": "9.27.0",
+  "description": "Sentry crash reporting SDK for macOS: the Objective-C interface, as a dynamic framework",
+  "homepage": "https://github.com/getsentry/sentry-cocoa",
+  "license": "MIT",
+  "supports": "osx"
+}

@@ -1,0 +1,8 @@
+sentry-cocoa provides CMake targets:
+
+    find_package(unofficial-sentry-cocoa CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::sentry-cocoa::sentry)
+
+find_package also sets SENTRY_COCOA_FRAMEWORK_DIR to the SentryObjC.framework
+bundle, which has to be embedded in the application, and
+SENTRY_COCOA_FRAMEWORK_DSYM_DIR to its separated symbols.
