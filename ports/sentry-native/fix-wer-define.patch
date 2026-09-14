@@ -1,0 +1,11 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -757,6 +757,7 @@ if(SENTRY_BACKEND_CRASHPAD)
+ 
+ 	if(WIN32 AND SENTRY_TRANSPORT_CRASHPAD_USE_WER)
+ 		add_dependencies(sentry crashpad::wer)
++		target_compile_definitions(sentry PRIVATE SENTRY_TRANSPORT_CRASHPAD_USE_WER)
+ 	endif()
+ 
+ 	# set static runtime if enabled
