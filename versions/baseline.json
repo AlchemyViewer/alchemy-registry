@@ -104,6 +104,10 @@
       "baseline": "9.27.0",
       "port-version": 0
     },
+    "sentry-native": {
+      "baseline": "0.16.6",
+      "port-version": 0
+    },
     "tinygltf": {
       "baseline": "3.0.0",
       "port-version": 1
