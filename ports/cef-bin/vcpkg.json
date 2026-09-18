@@ -1,6 +1,6 @@
 {
   "name": "cef-bin",
-  "version": "151.0.7922.174",
+  "version": "152.0.7977.83",
   "description": "CEF is the Chromium Embedded Framework, a simple framework for embedding Chromium-based browsers in other applications.",
   "homepage": "https://github.com/chromiumembedded/cef",
   "license": "BSD-3-Clause",
