@@ -1,10 +1,11 @@
 {
   "name": "cef-bin",
   "version": "152.0.7977.83",
+  "port-version": 1,
   "description": "CEF is the Chromium Embedded Framework, a simple framework for embedding Chromium-based browsers in other applications.",
   "homepage": "https://github.com/chromiumembedded/cef",
   "license": "BSD-3-Clause",
-  "supports": "(windows & x64) | (osx & (x64 | arm64)) | (linux & x64)",
+  "supports": "(windows & x64) | (osx & (x64 | arm64)) | (linux & (x64 | arm64))",
   "dependencies": [
     {
       "name": "vcpkg-cmake",
