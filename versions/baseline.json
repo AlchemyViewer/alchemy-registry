@@ -22,7 +22,7 @@
     },
     "cef-bin": {
       "baseline": "152.0.7977.83",
-      "port-version": 0
+      "port-version": 1
     },
     "collada-dom": {
       "baseline": "2.3.2",
