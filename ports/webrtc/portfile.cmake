@@ -673,6 +673,9 @@ foreach(HEADER_ROOT IN ITEMS
     )
 endforeach()
 
+# Remove empty folders
+file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/include/api/video_codecs/g3doc" "${CURRENT_PACKAGES_DIR}/include/modules/congestion_controller/scream/g3doc")
+
 file(STRINGS "${CMAKE_CURRENT_LIST_DIR}/package-remove-paths.txt" PACKAGE_REMOVE_PATHS ENCODING UTF-8)
 foreach(REMOVE_PATH IN LISTS PACKAGE_REMOVE_PATHS)
     if(REMOVE_PATH MATCHES "^[ \t]*#" OR REMOVE_PATH STREQUAL "")
