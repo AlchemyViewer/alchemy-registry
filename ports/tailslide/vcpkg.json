@@ -1,0 +1,17 @@
+{
+  "name": "tailslide",
+  "version": "1.5.12",
+  "description": "Embeddable parser, AST, tree walker, type checker, optimiser and compiler for the Linden Scripting Language, descended from lslint",
+  "homepage": "https://github.com/secondlife/tailslide",
+  "license": "MIT AND BSD-3-Clause",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}

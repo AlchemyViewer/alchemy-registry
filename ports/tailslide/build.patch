@@ -1,0 +1,87 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 574ad21..1e39069 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -22,6 +22,8 @@ option(TAILSLIDE_BUILD_FUZZER "Build Fuzzer" OFF)
+ option(TAILSLIDE_SANITIZE "Use ASAN" OFF)
+ option(TAILSLIDE_FUZZER_INSTRUMENTATION "Add instrumentation for libFuzzer" OFF)
+ option(TAILSLIDE_COVERAGE "Track coverage data in tests" OFF)
++set(TAILSLIDE_PREGENERATED_DIR "" CACHE PATH
++    "A directory holding lslmini.flex.cc, lslmini.tab.cc and lslmini.tab.hh generated ahead of time from libtailslide/lslmini.l and lslmini.y; when set, neither flex nor bison is needed to build")
+ 
+ if (MSVC)
+   # So?
+@@ -45,7 +47,9 @@ endif ()
+ 
+ # On macOS, search Homebrew for keg-only versions of Bison and Flex. Xcode does
+ # not provide new enough versions for us to use.
+-if (CMAKE_HOST_SYSTEM_NAME MATCHES "Darwin")
++if (TAILSLIDE_PREGENERATED_DIR)
++  # Nothing to generate.
++elseif (CMAKE_HOST_SYSTEM_NAME MATCHES "Darwin")
+   execute_process(
+           COMMAND brew --prefix bison
+           RESULT_VARIABLE BREW_BISON
+@@ -69,8 +73,10 @@ if (CMAKE_HOST_SYSTEM_NAME MATCHES "Darwin")
+   endif()
+ endif()
+ 
+-find_package(BISON REQUIRED)
+-find_package(FLEX REQUIRED)
++if (NOT TAILSLIDE_PREGENERATED_DIR)
++  find_package(BISON REQUIRED)
++  find_package(FLEX REQUIRED)
++endif()
+ 
+ set(EXTRA_LIBS "")
+ if(UNIX AND NOT APPLE)
+@@ -165,12 +171,25 @@ add_definitions(-DBUILD_DATE="${BUILD_DATE}")
+ add_definitions(-DVERSION="0.1dev")
+ 
+ # Needed for Bison / Flex
+-FLEX_TARGET(LSLMiniScanner libtailslide/lslmini.l ${CMAKE_CURRENT_BINARY_DIR}/lslmini.flex.cc)
+-BISON_TARGET(LSLMiniParser libtailslide/lslmini.y ${CMAKE_CURRENT_BINARY_DIR}/lslmini.tab.cc)
+-ADD_FLEX_BISON_DEPENDENCY(LSLMiniScanner LSLMiniParser)
++if (TAILSLIDE_PREGENERATED_DIR)
++  # The generated files, put where the generators would have put them so
++  # that nothing below cares which way they came.
++  foreach (generated lslmini.flex.cc lslmini.tab.cc lslmini.tab.hh)
++    configure_file("${TAILSLIDE_PREGENERATED_DIR}/${generated}" "${CMAKE_CURRENT_BINARY_DIR}/${generated}" COPYONLY)
++  endforeach()
++  set(FLEX_LSLMiniScanner_OUTPUTS "${CMAKE_CURRENT_BINARY_DIR}/lslmini.flex.cc")
++  set(BISON_LSLMiniParser_OUTPUTS "${CMAKE_CURRENT_BINARY_DIR}/lslmini.tab.cc" "${CMAKE_CURRENT_BINARY_DIR}/lslmini.tab.hh")
++else()
++  FLEX_TARGET(LSLMiniScanner libtailslide/lslmini.l ${CMAKE_CURRENT_BINARY_DIR}/lslmini.flex.cc)
++  BISON_TARGET(LSLMiniParser libtailslide/lslmini.y ${CMAKE_CURRENT_BINARY_DIR}/lslmini.tab.cc)
++  ADD_FLEX_BISON_DEPENDENCY(LSLMiniScanner LSLMiniParser)
++endif()
+ 
+-target_include_directories(libtailslide PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+-target_include_directories(libtailslide PUBLIC libtailslide)
++target_include_directories(libtailslide PUBLIC
++        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
++        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/libtailslide>
++        $<INSTALL_INTERFACE:include>
++        $<INSTALL_INTERFACE:include/tailslide>)
+ target_sources(libtailslide PRIVATE ${FLEX_LSLMiniScanner_OUTPUTS} ${BISON_LSLMiniParser_OUTPUTS})
+ 
+ # Suppress warning about unused yynerrs variable in Bison-generated code
+@@ -188,8 +207,10 @@ if (NOT WIN32 AND NOT TAILSLIDE_FUZZER_INSTRUMENTATION)
+ endif()
+ 
+ 
+-install(TARGETS libtailslide DESTINATION lib)
++install(TARGETS libtailslide EXPORT unofficial-tailslide-targets ARCHIVE DESTINATION lib)
+ install(DIRECTORY libtailslide/ DESTINATION include/tailslide FILES_MATCHING PATTERN "*.hh")
++install(EXPORT unofficial-tailslide-targets NAMESPACE unofficial::tailslide:: DESTINATION share/unofficial-tailslide)
++install(FILES cmake/unofficial-tailslide-config.cmake DESTINATION share/unofficial-tailslide)
+ 
+ 
+ if (TAILSLIDE_BUILD_CLI)
+diff --git a/cmake/unofficial-tailslide-config.cmake b/cmake/unofficial-tailslide-config.cmake
+new file mode 100644
+index 0000000..6887ff4
+--- /dev/null
++++ b/cmake/unofficial-tailslide-config.cmake
+@@ -0,0 +1 @@
++include("${CMAKE_CURRENT_LIST_DIR}/unofficial-tailslide-targets.cmake")

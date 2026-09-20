@@ -1,0 +1,6 @@
+tailslide provides CMake targets:
+
+    find_package(unofficial-tailslide CONFIG REQUIRED)
+    target_link_libraries(main PRIVATE unofficial::tailslide::libtailslide)
+
+Headers are under include/tailslide and are included as <tailslide/tailslide.hh>.
