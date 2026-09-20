@@ -96,6 +96,14 @@
       "baseline": "0.16.6",
       "port-version": 0
     },
+    "slua": {
+      "baseline": "2026-09-17",
+      "port-version": 0
+    },
+    "tailslide": {
+      "baseline": "1.5.12",
+      "port-version": 0
+    },
     "tinygltf": {
       "baseline": "3.0.0",
       "port-version": 1
