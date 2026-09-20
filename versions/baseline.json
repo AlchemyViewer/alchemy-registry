@@ -126,7 +126,7 @@
     },
     "webrtc": {
       "baseline": "2026-06-29",
-      "port-version": 2
+      "port-version": 3
     },
     "websocketpp": {
       "baseline": "0.8.2",
