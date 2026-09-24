@@ -10,19 +10,26 @@ vcpkg_from_github(
     HEAD_REF main
     PATCHES
         cmake-config-export.patch
+        tailslide-package.patch
 )
 
 # The offline half of the fork: the parser, the type checker, the linter and
 # the compiler, and what they link. The VM is built as a static library
 # because Analysis and Config link it privately, but nothing that runs a
 # script -- CodeGen, the executor, the inliner, the REPL -- is built.
+#
+# The compiler has its LSL front end, which compiles LSL for Luau's VM over
+# Tailslide's tree: found as the tailslide port's package rather than the
+# fork's staging folder, linked by the compiler publicly, and the builtins a
+# host has loaded into Tailslide's table left as they are
+# (tailslide-package.patch).
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
         -DLUAU_BUILD_CLI=OFF
         -DLUAU_BUILD_TESTS=OFF
         -DLUAU_BUILD_WEB=OFF
-        -DLUAU_USE_TAILSLIDE=OFF
+        -DLUAU_USE_TAILSLIDE=ON
         -DLUAU_INSTALL_ANALYSIS=ON
 )
 vcpkg_cmake_install()

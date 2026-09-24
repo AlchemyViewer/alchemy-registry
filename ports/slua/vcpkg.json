@@ -1,10 +1,12 @@
 {
   "name": "slua",
   "version-date": "2026-09-17",
-  "description": "The offline components of SLua, Second Life's fork of Luau: the parser, type checker, linter and compiler",
+  "port-version": 1,
+  "description": "The offline components of SLua, Second Life's fork of Luau: the parser, type checker, linter and compiler, with its compiler for LSL on Luau",
   "homepage": "https://github.com/secondlife/slua",
   "license": "MIT",
   "dependencies": [
+    "tailslide",
     {
       "name": "vcpkg-cmake",
       "host": true

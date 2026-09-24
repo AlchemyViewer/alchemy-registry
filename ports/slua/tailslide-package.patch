@@ -1,0 +1,65 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 065daa0..54ece10 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -33,10 +33,14 @@ endif()
+ 
+ set(TAILSLIDE_LIBRARY "")
+ if (LUAU_USE_TAILSLIDE)
+-    set(PACKAGE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/stage/packages/include")
+-    # TODO: this seems wacky
+-    set(PACKAGE_LIB_DIR "${CMAKE_SOURCE_DIR}/stage/packages/lib/release")
+-    set(TAILSLIDE_LIBRARY "tailslide")
++    # Installed as a package, Tailslide is found as one, after project()
++    # below; the fork's own builds take it from the staging folder.
++    if (NOT LUAU_INSTALL_ANALYSIS)
++        set(PACKAGE_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/stage/packages/include")
++        # TODO: this seems wacky
++        set(PACKAGE_LIB_DIR "${CMAKE_SOURCE_DIR}/stage/packages/lib/release")
++        set(TAILSLIDE_LIBRARY "tailslide")
++    endif()
+     add_compile_definitions("LUAU_USE_TAILSLIDE=1")
+ endif()
+ 
+@@ -175,7 +179,13 @@ target_link_libraries(Luau.CodeGen PUBLIC Luau.Common)
+ target_compile_features(Luau.VM PRIVATE cxx_std_17)
+ target_include_directories(Luau.VM PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/VM/include> $<INSTALL_INTERFACE:include/slua>)
+ target_link_libraries(Luau.VM PUBLIC Luau.Common Luau.LSLBuiltins)
+-if (LUAU_USE_TAILSLIDE)
++if (LUAU_USE_TAILSLIDE AND LUAU_INSTALL_ANALYSIS)
++    # The compiler's LSL front end includes Tailslide's headers in its own
++    # and links its library, so a consumer of the package links it too.
++    find_package(unofficial-tailslide CONFIG REQUIRED)
++    set(TAILSLIDE_LIBRARY unofficial::tailslide::libtailslide)
++    target_link_libraries(Luau.Compiler PUBLIC unofficial::tailslide::libtailslide)
++elseif (LUAU_USE_TAILSLIDE)
+     target_include_directories(Luau.Compiler PUBLIC "${PACKAGE_INCLUDE_DIR}")
+     target_include_directories(Luau.VM PUBLIC "${PACKAGE_INCLUDE_DIR}")
+ endif()
+diff --git a/Compiler/src/LSLCompiler.cpp b/Compiler/src/LSLCompiler.cpp
+index d457364..34efefe 100644
+--- a/Compiler/src/LSLCompiler.cpp
++++ b/Compiler/src/LSLCompiler.cpp
+@@ -2192,7 +2192,12 @@ void compileLSLOrThrow(Luau::BytecodeBuilder &bcb, const std::string &source, LS
+ {
+     thread_local bool builtins_initialized = false;
+     if (!builtins_initialized) {
+-        tailslide_init_builtins(nullptr);
++        // A host that has loaded builtins of its own keeps them: Tailslide's
++        // table is the process's, and loading these on top defines every one
++        // of them twice, with lookups then taking either.
++        ScopedScriptParser probe(nullptr);
++        if (!probe.context.builtins || !probe.context.builtins->lookup("state_entry", SYM_EVENT))
++            tailslide_init_builtins(nullptr);
+         builtins_initialized = true;
+     }
+     ScopedScriptParser parser(nullptr);
+diff --git a/cmake/unofficial-slua-config.cmake b/cmake/unofficial-slua-config.cmake
+index b706dc9..c77c604 100644
+--- a/cmake/unofficial-slua-config.cmake
++++ b/cmake/unofficial-slua-config.cmake
+@@ -1 +1,4 @@
++include(CMakeFindDependencyMacro)
++# The compiler's LSL front end is built over Tailslide and links it.
++find_dependency(unofficial-tailslide CONFIG)
+ include("${CMAKE_CURRENT_LIST_DIR}/unofficial-slua-targets.cmake")

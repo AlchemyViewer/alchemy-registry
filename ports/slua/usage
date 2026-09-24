@@ -3,4 +3,6 @@ slua provides CMake targets:
     find_package(unofficial-slua CONFIG REQUIRED)
     target_link_libraries(main PRIVATE unofficial::slua::Luau.Analysis unofficial::slua::Luau.Compiler)
 
-Headers are under include/slua and are included as Luau/<Name>.h.
+Headers are under include/slua and are included as Luau/<Name>.h. The compiler
+links tailslide, whose package the config finds; Luau/LSLCompiler.h compiles LSL
+for Luau's VM.
