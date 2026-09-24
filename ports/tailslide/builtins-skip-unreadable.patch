@@ -1,0 +1,153 @@
+diff --git a/libtailslide/builtins.cc b/libtailslide/builtins.cc
+index d5ee38b..705a6cd 100644
+--- a/libtailslide/builtins.cc
++++ b/libtailslide/builtins.cc
+@@ -35,9 +35,10 @@ LSLType *str_to_type(const char *str) {
+     if (strcmp(types[i].name, str) == 0)
+       return LSLType::get(types[i].type);
+   }
++  // A type this version does not know: the line naming it is left out,
++  // rather than the host process ended over a definitions file.
+   fprintf(stderr, "invalid type in builtins.txt: %s\n", str);
+-  exit(EXIT_FAILURE);
+-  return LSLType::get(LST_ERROR);
++  return nullptr;
+ }
+ 
+ /*
+@@ -115,12 +116,16 @@ void tailslide_init_builtins(const char *builtins_file) {
+     if (fp == nullptr) {
+       snprintf(buf, 1024, "couldn't open %s", builtins_file);
+       perror(buf);
+-      exit(EXIT_FAILURE);
++      return;
+     }
+   }
+ 
+   init_default_values();
+ 
++  // What a line this version cannot read is said of, and the line skipped:
++  // a host reads a grid's definitions, which may be newer than this.
++  const char *file_name = builtins_file ? builtins_file : "the built-in definitions";
++
+   while (true) {
+     if (fp) {
+       if (fgets(buf, 1024, fp) == nullptr)
+@@ -141,9 +146,8 @@ void tailslide_init_builtins(const char *builtins_file) {
+     ret_type = tailslide_strtok_r(buf, " (),", &tokptr);
+ 
+     if (ret_type == nullptr) {
+-      fprintf(stderr, "error parsing %s: %s\n", builtins_file, original);
+-      exit(EXIT_FAILURE);
+-      return;
++      fprintf(stderr, "error parsing %s, skipping: %s\n", file_name, original);
++      continue;
+     }
+ 
+     if (!strcmp(ret_type, "const")) {
+@@ -153,9 +157,8 @@ void tailslide_init_builtins(const char *builtins_file) {
+ 
+ 
+       if (ret_type == nullptr || name == nullptr || value == nullptr) {
+-        fprintf(stderr, "error parsing %s: %s\n", builtins_file, original);
+-        exit(EXIT_FAILURE);
+-        return;
++        fprintf(stderr, "error parsing %s, skipping: %s\n", file_name, original);
++        continue;
+       }
+ 
+       // key constants don't exist, and there are no key literals either.
+@@ -165,6 +168,9 @@ void tailslide_init_builtins(const char *builtins_file) {
+       } else {
+         const_type = str_to_type(ret_type);
+       }
++      if (const_type == nullptr) {
++        continue;
++      }
+       auto *sym = gStaticAllocator.newTracked<LSLSymbol>(
+           gStaticAllocator.copyStr(name), const_type, SYM_VARIABLE, SYM_BUILTIN
+       );
+@@ -174,7 +180,7 @@ void tailslide_init_builtins(const char *builtins_file) {
+       }
+ 
+ 
+-#define CONST_PARSE_FAIL() fprintf(stderr, "couldn't parse value for '%s'\n", name); exit(EXIT_FAILURE)
++#define CONST_PARSE_FAIL() fprintf(stderr, "couldn't parse value for '%s', skipping it\n", name); continue
+ 
+ #define CONST_SSCANF(num, fmt, ...) \
+ if(sscanf(value, (fmt), __VA_ARGS__) != num) { \
+@@ -247,19 +253,28 @@ if(sscanf(value, (fmt), __VA_ARGS__) != num) { \
+       name = tailslide_strtok_r(nullptr, " (),", &tokptr);
+ 
+       if (name == nullptr) {
+-        fprintf(stderr, "error parsing %s: %s\n", builtins_file, original);
+-        exit(EXIT_FAILURE);
+-        return;
++        fprintf(stderr, "error parsing %s, skipping: %s\n", file_name, original);
++        continue;
+       }
+ 
+       dec = gStaticAllocator.newTracked<LSLFunctionDec>();
++      bool bad_param = false;
+       while ((ptype = tailslide_strtok_r(nullptr, " (),", &tokptr)) != nullptr) {
+         if ((pname = tailslide_strtok_r(nullptr, " (),", &tokptr)) != nullptr) {
++          LSLType *param_type = str_to_type(ptype);
++          if (param_type == nullptr) {
++            bad_param = true;
++            break;
++          }
+           dec->pushChild(gStaticAllocator.newTracked<LSLIdentifier>(
+-              str_to_type(ptype), gStaticAllocator.copyStr(pname))
++              param_type, gStaticAllocator.copyStr(pname))
+           );
+         }
+       }
++      if (bad_param) {
++        fprintf(stderr, "error parsing %s, skipping: %s\n", file_name, original);
++        continue;
++      }
+ 
+       auto *event_sym = gStaticAllocator.newTracked<LSLSymbol>(
+           gStaticAllocator.copyStr(name), str_to_type("void"), SYM_EVENT, SYM_BUILTIN, dec
+@@ -270,22 +285,36 @@ if(sscanf(value, (fmt), __VA_ARGS__) != num) { \
+       name = tailslide_strtok_r(nullptr, " (),", &tokptr);
+ 
+       if (name == nullptr) {
+-        fprintf(stderr, "error parsing %s: %s\n", builtins_file, original);
+-        exit(EXIT_FAILURE);
+-        return;
++        fprintf(stderr, "error parsing %s, skipping: %s\n", file_name, original);
++        continue;
+       }
+ 
++      LSLType *func_type = str_to_type(ret_type);
++      if (func_type == nullptr) {
++        fprintf(stderr, "error parsing %s, skipping: %s\n", file_name, original);
++        continue;
++      }
+       dec = gStaticAllocator.newTracked<LSLFunctionDec>();
++      bool bad_param = false;
+       while ((ptype = tailslide_strtok_r(nullptr, " (),", &tokptr)) != nullptr) {
+         if ((pname = tailslide_strtok_r(nullptr, " (),", &tokptr)) != nullptr) {
++          LSLType *param_type = str_to_type(ptype);
++          if (param_type == nullptr) {
++            bad_param = true;
++            break;
++          }
+           dec->pushChild(gStaticAllocator.newTracked<LSLIdentifier>(
+-              str_to_type(ptype), gStaticAllocator.copyStr(pname)
++              param_type, gStaticAllocator.copyStr(pname)
+           ));
+         }
+       }
++      if (bad_param) {
++        fprintf(stderr, "error parsing %s, skipping: %s\n", file_name, original);
++        continue;
++      }
+ 
+       gBuiltinsSymbolTable.define(gStaticAllocator.newTracked<LSLSymbol>(
+-          gStaticAllocator.copyStr(name), str_to_type(ret_type), SYM_FUNCTION, SYM_BUILTIN, dec
++          gStaticAllocator.copyStr(name), func_type, SYM_FUNCTION, SYM_BUILTIN, dec
+       ));
+     }
+   }

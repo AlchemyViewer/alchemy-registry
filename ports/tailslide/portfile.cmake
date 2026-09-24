@@ -8,6 +8,11 @@ vcpkg_from_github(
     HEAD_REF main
     PATCHES
         build.patch
+        # A definitions file with a line this version cannot read -- a type
+        # it does not know, a malformed constant -- has that line skipped
+        # with a word on stderr, rather than the host process ended: a
+        # viewer reads the grid's own definitions, which may be newer.
+        builtins-skip-unreadable.patch
 )
 
 # The scanner and the parser are generated ahead of time, under generated/,
