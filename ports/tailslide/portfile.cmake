@@ -17,18 +17,24 @@ vcpkg_from_github(
         # _wfopen(): the narrow fopen() read it in the ANSI code page, so a
         # file under a profile named outside that page never opened.
         builtins-utf8-path.patch
+        # The parser's depth limit is 10000 on Windows as elsewhere, not
+        # 1000, its stacks grown on the heap rather than sized for that depth
+        # in yyparse()'s frame: a list literal costs two states an element,
+        # so a list of 500 parsed everywhere but Windows.
+        parser-stack-depth.patch
 )
 
 # The scanner and the parser are generated ahead of time, under generated/,
 # so that the build needs neither flex nor bison: Apple's bison is too old for
 # the grammar, and the Windows runner has neither. They were made from
 # libtailslide/lslmini.l and lslmini.y at this version with GNU flex 2.6.4 (Homebrew; Apple's flex of the same name emits the older yy_size_t length) and
-# bison 3.8.2, without #line directives so that they carry no path:
+# bison 3.8.2, without #line directives so that they carry no path, the
+# grammar with parser-stack-depth.patch applied:
 #
 #     bison -l -o lslmini.tab.cc --defines=lslmini.tab.hh lslmini.y
 #     flex -L -o lslmini.flex.cc lslmini.l
 #
-# Regenerate them whenever the version changes.
+# Regenerate them whenever the version, or a patch to either file, changes.
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS

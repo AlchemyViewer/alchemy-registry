@@ -91,17 +91,15 @@
 
     int yyerror( YYLTYPE*, void *, const char * );
     #define MAKEID(type,id,pos) ALLOCATOR->newTracked<LSLIdentifier>(TYPE(type), (id), &(pos))
-    // Anything larger is liable to make MSVC explode with the default compile options
+    // The same depth on every platform, so that a script parses or does not
+    // wherever it is checked. The stacks start at bison's own depth and grow
+    // on the heap as the parse nests: sized for the deepest parse, they were
+    // a quarter of a megabyte of yyparse()'s frame.
     #ifndef LSLINT_STACK_OVERFLOW_AT
-    #  ifdef _WIN32
-    #    define LSLINT_STACK_OVERFLOW_AT 1000
-    #  else
-    #    define LSLINT_STACK_OVERFLOW_AT 10000
-    #  endif
+    #  define LSLINT_STACK_OVERFLOW_AT 10000
     #endif
     // slightly higher so we can still have assert comments that check for stack depth
     #define YYMAXDEPTH LSLINT_STACK_OVERFLOW_AT + 20
-    #define YYINITDEPTH YYMAXDEPTH
     inline int _yylex( TAILSLIDE_STYPE * yylval, YYLTYPE *yylloc, void *yyscanner, int stack ) {
         if ( stack == LSLINT_STACK_OVERFLOW_AT ) {
             tailslide_get_extra(yyscanner)->logger->error( yylloc, E_PARSER_STACK_DEPTH );
@@ -651,20 +649,20 @@ static const yytype_int8 yytranslate[] =
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int16 yyrline[] =
 {
-       0,   229,   229,   236,   246,   251,   264,   268,   275,   282,
-     286,   290,   297,   302,   306,   311,   315,   322,   326,   330,
-     334,   338,   342,   346,   353,   361,   369,   377,   388,   392,
-     404,   411,   415,   427,   434,   438,   451,   456,   469,   476,
-     487,   494,   505,   509,   521,   529,   540,   544,   556,   561,
-     575,   579,   583,   587,   591,   595,   599,   603,   607,   611,
-     615,   620,   626,   636,   641,   646,   653,   657,   667,   670,
-     677,   681,   694,   698,   705,   709,   722,   727,   734,   738,
-     750,   754,   758,   762,   766,   770,   774,   778,   782,   786,
-     790,   794,   798,   802,   806,   810,   814,   818,   822,   826,
-     830,   834,   838,   842,   846,   853,   857,   861,   865,   869,
-     873,   877,   881,   888,   892,   906,   919,   923,   930,   935,
-     939,   943,   947,   951,   955,   962,   968,   975,   982,   989,
-     996,  1003
+       0,   227,   227,   234,   244,   249,   262,   266,   273,   280,
+     284,   288,   295,   300,   304,   309,   313,   320,   324,   328,
+     332,   336,   340,   344,   351,   359,   367,   375,   386,   390,
+     402,   409,   413,   425,   432,   436,   449,   454,   467,   474,
+     485,   492,   503,   507,   519,   527,   538,   542,   554,   559,
+     573,   577,   581,   585,   589,   593,   597,   601,   605,   609,
+     613,   618,   624,   634,   639,   644,   651,   655,   665,   668,
+     675,   679,   692,   696,   703,   707,   720,   725,   732,   736,
+     748,   752,   756,   760,   764,   768,   772,   776,   780,   784,
+     788,   792,   796,   800,   804,   808,   812,   816,   820,   824,
+     828,   832,   836,   840,   844,   851,   855,   859,   863,   867,
+     871,   875,   879,   886,   890,   904,   917,   921,   928,   933,
+     937,   941,   945,   949,   953,   960,   966,   973,   980,   987,
+     994,  1001
 };
 #endif
 

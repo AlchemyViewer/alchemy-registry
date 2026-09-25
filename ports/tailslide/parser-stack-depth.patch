@@ -1,0 +1,27 @@
+diff --git a/libtailslide/lslmini.y b/libtailslide/lslmini.y
+index 02fc8c7..53f9656 100644
+--- a/libtailslide/lslmini.y
++++ b/libtailslide/lslmini.y
+@@ -15,17 +15,15 @@
+ 
+     int yyerror( YYLTYPE*, void *, const char * );
+     #define MAKEID(type,id,pos) ALLOCATOR->newTracked<LSLIdentifier>(TYPE(type), (id), &(pos))
+-    // Anything larger is liable to make MSVC explode with the default compile options
++    // The same depth on every platform, so that a script parses or does not
++    // wherever it is checked. The stacks start at bison's own depth and grow
++    // on the heap as the parse nests: sized for the deepest parse, they were
++    // a quarter of a megabyte of yyparse()'s frame.
+     #ifndef LSLINT_STACK_OVERFLOW_AT
+-    #  ifdef _WIN32
+-    #    define LSLINT_STACK_OVERFLOW_AT 1000
+-    #  else
+-    #    define LSLINT_STACK_OVERFLOW_AT 10000
+-    #  endif
++    #  define LSLINT_STACK_OVERFLOW_AT 10000
+     #endif
+     // slightly higher so we can still have assert comments that check for stack depth
+     #define YYMAXDEPTH LSLINT_STACK_OVERFLOW_AT + 20
+-    #define YYINITDEPTH YYMAXDEPTH
+     inline int _yylex( TAILSLIDE_STYPE * yylval, YYLTYPE *yylloc, void *yyscanner, int stack ) {
+         if ( stack == LSLINT_STACK_OVERFLOW_AT ) {
+             tailslide_get_extra(yyscanner)->logger->error( yylloc, E_PARSER_STACK_DEPTH );
