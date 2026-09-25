@@ -102,7 +102,7 @@
     },
     "tailslide": {
       "baseline": "1.5.12",
-      "port-version": 1
+      "port-version": 2
     },
     "tinygltf": {
       "baseline": "3.0.0",
