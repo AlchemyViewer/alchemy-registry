@@ -13,6 +13,10 @@ vcpkg_from_github(
         # with a word on stderr, rather than the host process ended: a
         # viewer reads the grid's own definitions, which may be newer.
         builtins-skip-unreadable.patch
+        # The builtins path is UTF-8, and on Windows is opened through
+        # _wfopen(): the narrow fopen() read it in the ANSI code page, so a
+        # file under a profile named outside that page never opened.
+        builtins-utf8-path.patch
 )
 
 # The scanner and the parser are generated ahead of time, under generated/,

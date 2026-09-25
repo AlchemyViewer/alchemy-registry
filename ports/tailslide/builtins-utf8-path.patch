@@ -1,0 +1,67 @@
+diff --git a/libtailslide/builtins.cc b/libtailslide/builtins.cc
+index 705a6cd..adc1fa7 100644
+--- a/libtailslide/builtins.cc
++++ b/libtailslide/builtins.cc
+@@ -5,6 +5,17 @@
+ #include "logger.hh"
+ #include "strings.hh"
+ 
++#ifdef _WIN32
++# include <string>
++# ifndef WIN32_LEAN_AND_MEAN
++#   define WIN32_LEAN_AND_MEAN
++# endif
++# ifndef NOMINMAX
++#   define NOMINMAX
++# endif
++# include <windows.h>
++#endif
++
+ namespace Tailslide {
+ 
+ extern const char *BUILTINS_TXT[];
+@@ -96,6 +107,23 @@ static void init_default_values() {
+   TYPE(LST_FLOATINGPOINT)->setOneValue(float_one);
+ }
+ 
++// The path is UTF-8. On Windows the narrow fopen() reads it in the ANSI code
++// page instead, which misses a file under any directory named with a
++// character outside that page, so it goes through UTF-16 and _wfopen().
++static FILE *open_builtins_file(const char *builtins_file) {
++#ifdef _WIN32
++  const int wide_len = MultiByteToWideChar(CP_UTF8, 0, builtins_file, -1, nullptr, 0);
++  if (wide_len <= 0)
++    return nullptr;
++  std::wstring wide(static_cast<size_t>(wide_len), L'\0');
++  if (MultiByteToWideChar(CP_UTF8, 0, builtins_file, -1, wide.data(), wide_len) != wide_len)
++    return nullptr;
++  return _wfopen(wide.c_str(), L"r");
++#else
++  return fopen(builtins_file, "r");
++#endif
++}
++
+ // called once at startup, not thread-safe.
+ void tailslide_init_builtins(const char *builtins_file) {
+   LSLFunctionDec *dec = nullptr;
+@@ -111,7 +139,7 @@ void tailslide_init_builtins(const char *builtins_file) {
+   int event_index = 0;
+ 
+   if (builtins_file) {
+-    fp = fopen(builtins_file, "r");
++    fp = open_builtins_file(builtins_file);
+ 
+     if (fp == nullptr) {
+       snprintf(buf, 1024, "couldn't open %s", builtins_file);
+diff --git a/libtailslide/lslmini.hh b/libtailslide/lslmini.hh
+index c1947a9..e4fdeee 100644
+--- a/libtailslide/lslmini.hh
++++ b/libtailslide/lslmini.hh
+@@ -773,6 +773,7 @@ class LSLScript : public LSLASTNode {
+     void validateGlobals(bool mono_semantics);
+ };
+ 
++// builtins_file is a UTF-8 path, or null for the definitions built in.
+ void tailslide_init_builtins(const char *builtins_file);
+ 
+ }
