@@ -118,8 +118,11 @@ elseif(VCPKG_TARGET_IS_OSX)
     endif()
 elseif(VCPKG_TARGET_IS_LINUX)
     file(INSTALL "${CEF_SOURCE_PATH}/Release/libcef.so" DESTINATION "${CURRENT_PACKAGES_DIR}/lib")
+    # Debug libcef.so has DCHECKs that break OSR rendering on Linux; always use
+    # the release binary. We still need a file at the debug/lib path so the
+    # linker finds it, so symlink or copy the release one there.
     if(NOT VCPKG_BUILD_TYPE)
-        file(INSTALL "${CEF_SOURCE_PATH}/Debug/libcef.so" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/lib")
+        file(COPY "${CEF_SOURCE_PATH}/Release/libcef.so" DESTINATION "${CURRENT_PACKAGES_DIR}/debug/lib")
     endif()
 
     # chrome-sandbox carries no extension, so it needs a pattern of its own to
