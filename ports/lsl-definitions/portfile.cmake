@@ -4,13 +4,13 @@ set(VCPKG_POLICY_EMPTY_INCLUDE_FOLDER enabled)
 # carries a fourth, and it carries a CI run id that follows from nothing.
 set(LSL_TAG "v${VERSION}")
 string(REGEX MATCH "^[0-9]+[.][0-9]+[.][0-9]+" LSL_ASSET_VERSION "${VERSION}")
-set(LSL_BUILD "32865298211")
+set(LSL_BUILD "34724367572")
 
 vcpkg_download_distfile(
     LSL_ARCHIVE
     URLS "https://github.com/secondlife/lsl-definitions/releases/download/${LSL_TAG}/lsl_definitions-${LSL_ASSET_VERSION}-common-${LSL_BUILD}.tar.zst"
     FILENAME lsl-definitions.${VERSION}.tar.zst
-    SHA512 d182602708ccd563c927d4eef30154a7c5a5857bb32c85cfbcc7f78486c40301b23fc1ea7e1560c1eea4ec0318b854a9a002c750a74b057fd18f84542da03ee8
+    SHA512 8d8043ea0b5bd57c474b0a7445a39a16b32e3b4bbd8e0832611b4dc50ed0bf4b9a32b96e26dce118380d52b3336d58a5c3591b84fb509c1b9e8c51461a88afbd
 )
 
 vcpkg_extract_source_archive(LSL_DIR ARCHIVE "${LSL_ARCHIVE}" NO_REMOVE_ONE_LEVEL)

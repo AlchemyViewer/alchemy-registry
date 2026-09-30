@@ -1,6 +1,6 @@
 {
   "name": "lsl-definitions",
-  "version": "0.6.13.2",
+  "version": "0.7.0",
   "description": "Syntax, keyword and documentation definitions for LSL and SLua",
   "homepage": "https://github.com/secondlife/lsl-definitions",
   "license": "MIT"
