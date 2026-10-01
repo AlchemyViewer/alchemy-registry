@@ -29,7 +29,11 @@ find_program(RUSTUP_EXECUTABLE rustup
     REQUIRED)
 
 if(VCPKG_TARGET_IS_WINDOWS)
-    set(RUST_TARGET "x86_64-pc-windows-msvc")
+    if(VCPKG_TARGET_ARCHITECTURE STREQUAL "arm64")
+        set(RUST_TARGET "aarch64-pc-windows-msvc")
+    else()
+        set(RUST_TARGET "x86_64-pc-windows-msvc")
+    endif()
 elseif(VCPKG_TARGET_IS_OSX)
     if(VCPKG_OSX_ARCHITECTURES MATCHES "arm64")
         set(RUST_TARGET "aarch64-apple-darwin")
