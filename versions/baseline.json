@@ -22,7 +22,7 @@
     },
     "cef-bin": {
       "baseline": "152.0.7977.83",
-      "port-version": 2
+      "port-version": 3
     },
     "collada-dom": {
       "baseline": "2.3.2",
@@ -118,7 +118,7 @@
     },
     "velopack": {
       "baseline": "1.2.0",
-      "port-version": 0
+      "port-version": 1
     },
     "vlc-bin": {
       "baseline": "3.0.23",
