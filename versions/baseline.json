@@ -25,8 +25,8 @@
       "port-version": 0
     },
     "cef-bin": {
-      "baseline": "152.0.7977.83",
-      "port-version": 3
+      "baseline": "154.0.8037.58",
+      "port-version": 0
     },
     "collada-dom": {
       "baseline": "2.3.2",
