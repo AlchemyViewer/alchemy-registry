@@ -1,8 +1,8 @@
 {
   "name": "vlc-bin",
-  "version-semver": "3.0.23",
+  "version-semver": "3.0.24",
   "description": "Prebuilt VLC libraries and codec plugins for the media plugin",
   "homepage": "https://github.com/AlchemyViewer/vlc-bin",
   "license": "LGPL-2.1-only",
-  "supports": "(windows & x64) | (osx & (x64 | arm64))"
+  "supports": "(windows & (x64 | arm64)) | (osx & (x64 | arm64))"
 }
