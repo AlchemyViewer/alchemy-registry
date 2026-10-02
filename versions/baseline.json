@@ -125,7 +125,7 @@
       "port-version": 1
     },
     "vlc-bin": {
-      "baseline": "3.0.23",
+      "baseline": "3.0.24",
       "port-version": 0
     },
     "webrtc": {
