@@ -61,7 +61,7 @@
       "port-version": 0
     },
     "nvapi": {
-      "baseline": "R610",
+      "baseline": "R615",
       "port-version": 0
     },
     "open-libndofdev": {
