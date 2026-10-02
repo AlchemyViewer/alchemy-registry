@@ -20,4 +20,16 @@ if(EXISTS "${_nvapi_root}/debug/lib/nvapi64.lib")
         IMPORTED_LOCATION_DEBUG "${_nvapi_root}/debug/lib/nvapi64.lib")
 endif()
 
+if(EXISTS "${_nvapi_root}/lib/nvapia64.lib")
+    set_property(TARGET unofficial::nvapi::nvapi APPEND PROPERTY IMPORTED_CONFIGURATIONS RELEASE)
+    set_target_properties(unofficial::nvapi::nvapi PROPERTIES
+        IMPORTED_LOCATION_RELEASE "${_nvapi_root}/lib/nvapia64.lib")
+endif()
+
+if(EXISTS "${_nvapi_root}/debug/lib/nvapia64.lib")
+    set_property(TARGET unofficial::nvapi::nvapi APPEND PROPERTY IMPORTED_CONFIGURATIONS DEBUG)
+    set_target_properties(unofficial::nvapi::nvapi PROPERTIES
+        IMPORTED_LOCATION_DEBUG "${_nvapi_root}/debug/lib/nvapia64.lib")
+endif()
+
 unset(_nvapi_root)
