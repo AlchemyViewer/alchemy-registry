@@ -11,6 +11,7 @@ vcpkg_from_github(
     PATCHES
         cmake-config-export.patch
         tailslide-package.patch
+        lsl-debug-lines.patch
 )
 
 # The offline half of the fork: the parser, the type checker, the linter and
@@ -22,7 +23,11 @@ vcpkg_from_github(
 # Tailslide's tree: found as the tailslide port's package rather than the
 # fork's staging folder, linked by the compiler publicly, and the builtins a
 # host has loaded into Tailslide's table left as they are
-# (tailslide-package.patch).
+# (tailslide-package.patch). It can record each instruction's LSL line, as
+# Luau's own compiler does at debug level 1, where asked for: off by default,
+# as the server compiles, so the bytecode is the server's unless a caller
+# wants the lines -- a viewer weighing a script line by line
+# (lsl-debug-lines.patch).
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS

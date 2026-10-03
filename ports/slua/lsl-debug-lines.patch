@@ -1,0 +1,133 @@
+diff -ru a/Compiler/include/Luau/LSLCompiler.h b/Compiler/include/Luau/LSLCompiler.h
+--- a/Compiler/include/Luau/LSLCompiler.h	2026-10-03 15:08:38
++++ b/Compiler/include/Luau/LSLCompiler.h	2026-10-03 15:08:38
+@@ -63,9 +63,13 @@
+ class LuauVisitor : public ASTVisitor
+ {
+ public:
+-    explicit LuauVisitor(Luau::BytecodeBuilder *builder, LuauSymbolMap &symbol_map);
++    explicit LuauVisitor(Luau::BytecodeBuilder *builder, LuauSymbolMap &symbol_map, bool debug_lines = false);
+ 
+ protected:
++    // Each node's line set on the builder as the node is compiled, and the
++    // line of the node around it set back after, where debug lines are asked
++    // for: every instruction then has a line, and the bytecode its line info.
++    bool visitSpecific(LSLASTNode *node) override;
+     bool visit(LSLScript* script) override;
+     bool visit(LSLGlobalVariable* glob_var) override;
+     bool visit(LSLState* state) override;
+@@ -143,6 +147,9 @@
+     // current max stack size in the function
+     unsigned int mStackSize;
+     int16_t mTargetReg;
++    // Whether lines are recorded, and the line of the node being compiled.
++    bool mDebugLines = false;
++    int mDebugLine = 0;
+ };
+ 
+ }
+@@ -155,9 +162,12 @@
+     std::vector<uint64_t> stateHandlerMasks;
+ };
+ 
+-void compileLSLOrThrow(Luau::BytecodeBuilder &bcb, const std::string &source, LSLScriptInfo *info = nullptr);
++// With debugLines, each instruction carries the line of the LSL it came of,
++// which the bytecode then holds as Luau's own compiler's does at debug level
++// 1. Off, as the server compiles, the bytecode has no line info.
++void compileLSLOrThrow(Luau::BytecodeBuilder &bcb, const std::string &source, LSLScriptInfo *info = nullptr, bool debugLines = false);
+ std::string compileLSL(const std::string &source, LSLScriptInfo *info = nullptr);
+ 
+-std::string compileLSLAssetOrThrow(const std::string &source, uint32_t apiVersion = 0);
++std::string compileLSLAssetOrThrow(const std::string &source, uint32_t apiVersion = 0, bool debugLines = false);
+ 
+ #endif // LUAU_LSLCOMPILER_H
+diff -ru a/Compiler/src/LSLCompiler.cpp b/Compiler/src/LSLCompiler.cpp
+--- a/Compiler/src/LSLCompiler.cpp	2026-10-03 15:08:38
++++ b/Compiler/src/LSLCompiler.cpp	2026-10-03 15:08:38
+@@ -413,16 +413,31 @@
+     return (uint8_t)Luau::BytecodeBuilder::getStringHash(string_ref);
+ }
+ 
+-LuauVisitor::LuauVisitor(Luau::BytecodeBuilder* builder, LuauSymbolMap &symbol_map)
++LuauVisitor::LuauVisitor(Luau::BytecodeBuilder* builder, LuauSymbolMap &symbol_map, bool debug_lines)
+     : _mSymbolMap(symbol_map)
+     , mBuilder(builder)
+     , mRegTop(0)
+     , mStackSize(0)
+     , mTargetReg(-1)
++    , mDebugLines(debug_lines)
+ {
+     mBuilder->setDumpFlags(Luau::BytecodeBuilder::Dump_Code);
+ }
+ 
++bool LuauVisitor::visitSpecific(LSLASTNode *node)
++{
++    if (!mDebugLines)
++        return ASTVisitor::visitSpecific(node);
++    const int outer = mDebugLine;
++    if (const auto *loc = node->getLoc(); loc && loc->first_line > 0)
++        mDebugLine = loc->first_line;
++    mBuilder->setDebugLine(mDebugLine);
++    const bool result = ASTVisitor::visitSpecific(node);
++    mDebugLine = outer;
++    mBuilder->setDebugLine(mDebugLine);
++    return result;
++}
++
+ bool LuauVisitor::visit(LSLScript* script)
+ {
+     // Do functions and event handlers first, we'll reference them in the main function.
+@@ -437,6 +452,10 @@
+ 
+     // Now we can build the implicit main function
+     auto main_id = mBuilder->beginFunction(0);
++    // A function begun has no line: the script's, or its first, for what
++    // the main function does before any node of its own.
++    if (mDebugLines)
++        mBuilder->setDebugLine(mDebugLine > 0 ? mDebugLine : 1);
+     // Luau doesn't emit a name for the main function
+     // mBuilder->setDebugFunctionName(sref("main"));
+     // Walk over the globals
+@@ -529,6 +548,10 @@
+ 
+     auto *param_list = func_sym->getFunctionDecl();
+     auto func_id = mBuilder->beginFunction(param_list->getNumChildren());
++    // The function's own line, for what it does before its body's first
++    // node: a function begun has none.
++    if (mDebugLines)
++        mBuilder->setDebugLine(mDebugLine > 0 ? mDebugLine : 1);
+     // make sure the function id actually matches what we expect
+     LUAU_ASSERT(func_id == sym_data.index);
+ 
+@@ -2188,7 +2211,7 @@
+ }
+ 
+ 
+-void compileLSLOrThrow(Luau::BytecodeBuilder &bcb, const std::string &source, LSLScriptInfo *info)
++void compileLSLOrThrow(Luau::BytecodeBuilder &bcb, const std::string &source, LSLScriptInfo *info, bool debugLines)
+ {
+     thread_local bool builtins_initialized = false;
+     if (!builtins_initialized) {
+@@ -2283,7 +2306,7 @@
+     LuauResourceVisitor luauResourceVisitor(&symbol_map);
+     script->visit(&luauResourceVisitor);
+ 
+-    LuauVisitor luauVisitor(&bcb, symbol_map);
++    LuauVisitor luauVisitor(&bcb, symbol_map, debugLines);
+     script->visit(&luauVisitor);
+ 
+     if (info != nullptr)
+@@ -2313,11 +2336,11 @@
+     }
+ }
+ 
+-std::string compileLSLAssetOrThrow(const std::string &source, uint32_t apiVersion)
++std::string compileLSLAssetOrThrow(const std::string &source, uint32_t apiVersion, bool debugLines)
+ {
+     Luau::BytecodeBuilder bcb;
+     LSLScriptInfo info;
+-    compileLSLOrThrow(bcb, source, &info);
++    compileLSLOrThrow(bcb, source, &info, debugLines);
+ 
+     Luau::BytecodeHeader header;
+     header.isLSL = true;
