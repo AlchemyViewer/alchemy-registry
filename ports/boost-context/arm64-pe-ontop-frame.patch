@@ -1,0 +1,29 @@
+ontop_fcontext on Windows arm64 reserves a 0xd0-byte frame, as jump_fcontext
+and make_fcontext lay it out, but gives back only 0xc0 on the way out: the
+offset of the saved PC rather than the size of the frame. Every context it
+resumes then runs on with its stack pointer 16 bytes short, and returns
+through whatever lies there. jump_fcontext gives back 0xd0, and the ELF and
+Mach-O ontop_fcontext give back their whole frame.
+
+--- a/src/asm/ontop_arm64_aapcs_pe_armasm.asm
++++ b/src/asm/ontop_arm64_aapcs_pe_armasm.asm
+@@ -124,7 +124,7 @@ ontop_fcontext proc BOOST_CONTEXT_EXPORT
+
+     ; skip pc
+     ; restore stack from GP + FPU
+-    add  sp, sp, #0xc0
++    add  sp, sp, #0xd0
+
+     ; jump to ontop-function
+     ret x2
+--- a/src/asm/ontop_arm64_aapcs_pe_armclang.S
++++ b/src/asm/ontop_arm64_aapcs_pe_armclang.S
+@@ -130,7 +130,7 @@ ontop_fcontext:
+
+     // skip pc
+     // restore stack from GP + FPU
+-    add  sp, sp, #0xc0
++    add  sp, sp, #0xd0
+
+     // jump to ontop-function
+     ret x2
