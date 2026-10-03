@@ -20,6 +20,10 @@
       "baseline": "1.7.6",
       "port-version": 1
     },
+    "boost-context": {
+      "baseline": "1.92.0",
+      "port-version": 0
+    },
     "boost-fiber": {
       "baseline": "1.92.0",
       "port-version": 0
