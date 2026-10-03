@@ -1,3 +1,9 @@
+# clipboard-keep-own-selection.patch: SDL cancels the clipboard data it was
+# given when it wrongly decides another client has the clipboard -- on
+# Wayland when keyboard focus leaves with a stale offer held, or when a
+# clipboard manager serves a copy of its data; on X11 when a TARGETS reply
+# arrives after it has taken the clipboard back -- so pasting its own copy
+# back comes up empty. Drop when a release carries main's equivalent.
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO libsdl-org/SDL
@@ -6,6 +12,7 @@ vcpkg_from_github(
     HEAD_REF main
     PATCHES
         fix-freebsd.patch
+        clipboard-keep-own-selection.patch
 )
 
 string(COMPARE EQUAL "${VCPKG_LIBRARY_LINKAGE}" "static" SDL_STATIC)
