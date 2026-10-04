@@ -22,6 +22,12 @@ vcpkg_from_github(
         # in yyparse()'s frame: a list literal costs two states an element,
         # so a list of 500 parsed everywhere but Windows.
         parser-stack-depth.patch
+        # Two vectors' dot product is each part by the same part of the
+        # other, not x by the other's z, and the cross product rounds each
+        # product as the VM does rather than letting the compiler fuse it
+        # into the difference: <1,3,-5> * <4,-2,-1> folded to -27, not 3,
+        # and a vector crossed with itself was not zero.
+        vector-products.patch
 )
 
 # The scanner and the parser are generated ahead of time, under generated/,
