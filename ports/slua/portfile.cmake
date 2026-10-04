@@ -12,6 +12,7 @@ vcpkg_from_github(
         cmake-config-export.patch
         tailslide-package.patch
         lsl-debug-lines.patch
+        lsl-jump-direction.patch
 )
 
 # The offline half of the fork: the parser, the type checker, the linter and
@@ -27,7 +28,11 @@ vcpkg_from_github(
 # Luau's own compiler does at debug level 1, where asked for: off by default,
 # as the server compiles, so the bytecode is the server's unless a caller
 # wants the lines -- a viewer weighing a script line by line
-# (lsl-debug-lines.patch).
+# (lsl-debug-lines.patch). A jump is forward or backward by where its label
+# stands against it in the script, not by where the two nodes were allocated,
+# which the compiler compared: the same script was JUMP one compile and
+# JUMPBACK, two bytes larger and an interrupt check different, the next
+# (lsl-jump-direction.patch).
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
