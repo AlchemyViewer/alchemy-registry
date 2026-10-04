@@ -32,6 +32,14 @@ foreach(file IN LISTS LSL_FILES)
          DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/lsl_definitions")
 endforeach()
 
+# LL's generator, which writes the parts of their LSL compiler's lexer,
+# grammar, tree and library table that follow from the definitions above.
+file(INSTALL "${LSL_DIR}/lsl_definitions/python/gen_definitions.py"
+     DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/python")
+file(INSTALL "${LSL_DIR}/lsl_definitions/python/lsl_definitions"
+     DESTINATION "${CURRENT_PACKAGES_DIR}/share/${PORT}/python"
+     PATTERN "__pycache__" EXCLUDE)
+
 file(INSTALL "${CMAKE_CURRENT_LIST_DIR}/unofficial-lsl-definitions-config.cmake"
      DESTINATION "${CURRENT_PACKAGES_DIR}/share/unofficial-lsl-definitions")
 
