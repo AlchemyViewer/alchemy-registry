@@ -44,6 +44,10 @@ vcpkg_from_github(
         # 4294967296 was 0. One from 2147483648 to 4294967295 wraps below
         # nought either way.
         literals-as-32-bit.patch
+        # A string cast to an integer folded as the VMs cast one on those
+        # hosts, by a strtoul of 32 bits: past 0xFFFFFFFF it is -1, where a
+        # 64-bit strtoul wrapped it -- "4294967296" was 0.
+        string-casts-as-32-bit.patch
 )
 
 # Tailslide checks in a scanner and a parser generated from libtailslide/

@@ -1,0 +1,62 @@
+diff --git a/libtailslide/operations.cc b/libtailslide/operations.cc
+index 78374a4..e50c364 100644
+--- a/libtailslide/operations.cc
++++ b/libtailslide/operations.cc
+@@ -1,3 +1,4 @@
++#include <cctype>
+ #include <cmath>
+ #include <string>
+ #include <set>
+@@ -586,6 +587,40 @@ LSLConstant *TailslideOperationBehavior::cast(LSLType *to_type, LSLConstant *cv,
+ 
+ 
+ 
++// strtoul as the grid's 32-bit Linux hosts have it, where the VMs cast a
++// string to an integer: leading spaces, a sign, digits of the base, and past
++// 0xFFFFFFFF it stops there -- -1 once signed, its minus or not -- where a
++// 64-bit host's strtoul would wrap it ("4294967296" was 0).
++static S32 strtoul32(const char *text, int base) {
++  const char *at = text;
++  while (*at == ' ' || (*at >= '\t' && *at <= '\r'))
++    ++at;
++  const bool negative = *at == '-';
++  if (*at == '+' || *at == '-')
++    ++at;
++  if (base == 16 && at[0] == '0' && (at[1] == 'x' || at[1] == 'X') && isxdigit((unsigned char)at[2]))
++    at += 2;
++  unsigned long long value = 0;
++  bool past = false;
++  for (;; ++at) {
++    int digit;
++    if (*at >= '0' && *at <= '9')
++      digit = *at - '0';
++    else if (base == 16 && isxdigit((unsigned char)*at))
++      digit = tolower((unsigned char)*at) - 'a' + 10;
++    else
++      break;
++    value = value * (unsigned long long)base + (unsigned long long)digit;
++    if (value > 0xFFFFFFFFull) {
++      past = true;
++      value = 0xFFFFFFFFull;
++    }
++  }
++  if (past)
++    return -1;
++  return (S32)(negative ? 0u - (unsigned int)value : (unsigned int)value);
++}
++
+ LSLConstant *TailslideOperationBehavior::cast(LSLType *to_type, LSLStringConstant *cv) {
+   auto *v = cv->getValue();
+   switch(to_type->getIType()) {
+@@ -596,9 +631,8 @@ LSLConstant *TailslideOperationBehavior::cast(LSLType *to_type, LSLStringConstan
+       // This check is safe because `cv` must be a null terminated string.
+       if (v[0] == '0' && (v[1] == 'x' || v[1] == 'X'))
+         base = 16;
+-      // This strtoul is weird in that we're using a signed int, but it matches
+-      // the behavior of upstream, so whatever.
+-      return _mAllocator->newTracked<LSLIntegerConstant>((S32) strtoul(v, nullptr, base));
++      // The VMs' strtoul into a signed int, as their 32-bit hosts have it.
++      return _mAllocator->newTracked<LSLIntegerConstant>(strtoul32(v, base));
+     }
+     case LST_FLOATINGPOINT: {
+       // We intentionally truncate precision here to match Mono
