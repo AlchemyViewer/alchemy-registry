@@ -106,11 +106,11 @@
     },
     "slua": {
       "baseline": "2026-09-17",
-      "port-version": 2
+      "port-version": 3
     },
     "tailslide": {
       "baseline": "1.5.12",
-      "port-version": 3
+      "port-version": 4
     },
     "tinygltf": {
       "baseline": "3.0.0",
