@@ -813,6 +813,14 @@ namespace Tailslide {
     char *parse_string(ScriptAllocator *allocator, char *input);
 }
 
+// An integer literal as the grid's compilers read one, on their 32-bit
+// hosts: strtoul of 32 bits, which stops at 0xFFFFFFFF past it -- -1 once
+// it is signed -- where a 64-bit host's strtoul would wrap it instead.
+static S32 lsl_integer(const char *text, int base) {
+  const unsigned long long value = strtoull(text, NULL, base);
+  return (S32)(unsigned int)(value > 0xFFFFFFFFull ? 0xFFFFFFFFull : value);
+}
+
  /* exclusive state to eat comments of any length without overflowing any buffers */
 
 #define INITIAL 0
@@ -1276,11 +1284,11 @@ YY_RULE_SETUP
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-{ yylval->ival = strtoul(yytext, NULL, 16); return(INTEGER_CONSTANT); }
+{ yylval->ival = lsl_integer(yytext, 16); return(INTEGER_CONSTANT); }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-{ yylval->ival = strtoul(yytext, NULL, 10); return(INTEGER_CONSTANT); }
+{ yylval->ival = lsl_integer(yytext, 10); return(INTEGER_CONSTANT); }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP

@@ -38,11 +38,18 @@ vcpkg_from_github(
         # writes them), and a minus before a number in a global's
         # initializer one constant, as LL's grammar reads it there.
         mono-constants-as-ll.patch
+        # An integer literal read as the grid's compilers read one on their
+        # 32-bit hosts, where strtoul stops at 0xFFFFFFFF: one past it is -1,
+        # decimal or hexadecimal, where a 64-bit strtoul wrapped it --
+        # 4294967296 was 0. One from 2147483648 to 4294967295 wraps below
+        # nought either way.
+        literals-as-32-bit.patch
 )
 
 # Tailslide checks in a scanner and a parser generated from libtailslide/
 # lslmini.l and lslmini.y, but from the grammar as it is: ours, under
-# generated/, are made from the grammar with parser-stack-depth.patch applied,
+# generated/, are made from the grammar with parser-stack-depth.patch and the
+# scanner with literals-as-32-bit.patch applied,
 # and take their place, generation skipped so that the build needs neither
 # flex nor bison (Apple's bison is too old for the grammar, and the Windows
 # runner has neither). Made in libtailslide/ at this version with GNU flex
