@@ -54,7 +54,7 @@
     },
     "lsl-definitions": {
       "baseline": "0.7.0",
-      "port-version": 0
+      "port-version": 1
     },
     "md4c": {
       "baseline": "2026-06-17",
