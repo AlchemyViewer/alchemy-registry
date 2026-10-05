@@ -1,0 +1,6 @@
+corrosion provides CMake functions that import cargo crates as targets:
+
+    find_package(Corrosion CONFIG REQUIRED)
+    corrosion_import_crate(MANIFEST_PATH path/to/Cargo.toml)
+
+cargo and rustc are needed where the project configures, not where this port builds.
