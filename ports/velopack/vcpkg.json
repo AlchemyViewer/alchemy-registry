@@ -1,7 +1,6 @@
 {
   "name": "velopack",
-  "version-string": "1.2.0",
-  "port-version": 1,
+  "version-string": "1.2.161",
   "description": "Installer and automatic update framework for cross-platform desktop applications",
   "homepage": "https://velopack.io/",
   "license": "MIT",
