@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 3410702..065daa0 100644
+index 3410702..4757b0b 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -15,6 +15,7 @@ option(LUAU_EXTERN_C "Use extern C for all APIs" OFF)
@@ -73,6 +73,15 @@ index 3410702..065daa0 100644
  
  # ServerLua: per-script execution engine shared with the script host
  target_compile_features(Luau.Executor PUBLIC cxx_std_17)
+@@ -182,7 +187,7 @@ target_link_libraries(Luau.Executor PUBLIC Luau.VM Luau.Bytecode Luau.LSLBuiltin
+ target_link_libraries(Luau.Executor PRIVATE Luau.VM.Internals)
+ 
+ target_compile_features(Luau.Require PUBLIC cxx_std_17)
+-target_include_directories(Luau.Require PUBLIC Require/include)
++target_include_directories(Luau.Require PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/Require/include> $<INSTALL_INTERFACE:include/slua>)
+ target_link_libraries(Luau.Require PUBLIC Luau.Config Luau.VM)
+ 
+ target_include_directories(isocline PUBLIC extern/isocline/include)
 @@ -291,7 +296,7 @@ if(MSVC AND LUAU_BUILD_TESTS)
  endif()
  
@@ -91,7 +100,7 @@ index 3410702..065daa0 100644
      target_sources(Luau.Ast PRIVATE tools/natvis/Ast.natvis)
      target_sources(Luau.Analysis PRIVATE tools/natvis/Analysis.natvis)
      target_sources(Luau.CodeGen PRIVATE tools/natvis/CodeGen.natvis)
-@@ -429,3 +434,39 @@ foreach(LIB Luau.Ast Luau.Compiler Luau.Config Luau.Analysis Luau.CodeGen Luau.V
+@@ -429,3 +434,41 @@ foreach(LIB Luau.Ast Luau.Compiler Luau.Config Luau.Analysis Luau.CodeGen Luau.V
          endif()
      endif()
  endforeach()
@@ -99,21 +108,23 @@ index 3410702..065daa0 100644
 +# The offline components as a package: what a tool that parses, checks and
 +# compiles scripts links, and nothing that runs them. CodeGen, the inliner,
 +# the executor, the REPL support and isocline are left out of the default
-+# build as well as out of the package.
++# build as well as out of the package. Require is in it for its navigator,
++# which resolves a require path by Luau's rules over whatever a tool says
++# the places are (Luau/RequireNavigator.h).
 +if(LUAU_INSTALL_ANALYSIS)
 +    include(GNUInstallDirs)
 +
-+    set_target_properties(Luau.CodeGen Luau.Inliner Luau.Executor Luau.Require Luau.CLI.lib isocline PROPERTIES EXCLUDE_FROM_ALL ON)
++    set_target_properties(Luau.CodeGen Luau.Inliner Luau.Executor Luau.CLI.lib isocline PROPERTIES EXCLUDE_FROM_ALL ON)
 +
 +    install(
-+        TARGETS Luau.Common Luau.LSLBuiltins Luau.Ast Luau.Bytecode Luau.Compiler Luau.Config Luau.Analysis Luau.VM
++        TARGETS Luau.Common Luau.LSLBuiltins Luau.Ast Luau.Bytecode Luau.Compiler Luau.Config Luau.Analysis Luau.VM Luau.Require
 +        EXPORT unofficial-slua-targets
 +        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 +        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 +        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
 +    )
 +
-+    foreach(component Common LSLBuiltins Ast Bytecode Compiler Config Analysis VM)
++    foreach(component Common LSLBuiltins Ast Bytecode Compiler Config Analysis VM Require)
 +        install(
 +            DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/${component}/include/"
 +            DESTINATION "include/slua"

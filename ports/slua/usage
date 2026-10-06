@@ -5,4 +5,6 @@ slua provides CMake targets:
 
 Headers are under include/slua and are included as Luau/<Name>.h. The compiler
 links tailslide, whose package the config finds; Luau/LSLCompiler.h compiles LSL
-for Luau's VM.
+for Luau's VM. unofficial::slua::Luau.Require's navigator
+(Luau/RequireNavigator.h) walks a require path by Luau's rules over a tool's
+own places.

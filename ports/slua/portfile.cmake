@@ -18,7 +18,9 @@ vcpkg_from_github(
 # The offline half of the fork: the parser, the type checker, the linter and
 # the compiler, and what they link. The VM is built as a static library
 # because Analysis and Config link it privately, but nothing that runs a
-# script -- CodeGen, the executor, the inliner, the REPL -- is built.
+# script -- CodeGen, the executor, the inliner, the REPL -- is built. Require
+# is, for its navigator: Luau's rules for a require path, walked over the
+# places a tool says there are (Luau/RequireNavigator.h).
 #
 # The compiler has its LSL front end, which compiles LSL for Luau's VM over
 # Tailslide's tree: found as the tailslide port's package rather than the
