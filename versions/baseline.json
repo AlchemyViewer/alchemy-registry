@@ -110,7 +110,7 @@
     },
     "slua": {
       "baseline": "2026-09-17",
-      "port-version": 3
+      "port-version": 4
     },
     "tailslide": {
       "baseline": "1.5.14",
