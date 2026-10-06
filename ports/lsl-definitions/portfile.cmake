@@ -13,7 +13,20 @@ vcpkg_download_distfile(
     SHA512 8d8043ea0b5bd57c474b0a7445a39a16b32e3b4bbd8e0832611b4dc50ed0bf4b9a32b96e26dce118380d52b3336d58a5c3591b84fb509c1b9e8c51461a88afbd
 )
 
-vcpkg_extract_source_archive(LSL_DIR ARCHIVE "${LSL_ARCHIVE}" NO_REMOVE_ONE_LEVEL)
+# inventory-kind.patch says, of each argument that names an item in the
+# prim's inventory, which kind of item it names -- sound, texture,
+# animation, notecard, object, material, settings, landmark, script, or any
+# -- in a key of its own beside LL's `asset-semantics`, which marks only the
+# arguments that take an asset's name or its UUID. LL's generator reads the
+# keys it knows and passes over the rest, so what it makes is unchanged. An
+# editor offers the object's items of the kind inside such a string.
+vcpkg_extract_source_archive(
+    LSL_DIR
+    ARCHIVE "${LSL_ARCHIVE}"
+    NO_REMOVE_ONE_LEVEL
+    PATCHES
+        inventory-kind.patch
+)
 
 # Named rather than globbed so a new upstream file has to be adopted knowingly.
 set(LSL_FILES
