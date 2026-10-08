@@ -66,6 +66,15 @@ if(NOT APPLE)
         MAP_IMPORTED_CONFIG_MINSIZEREL Release
         MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release)
 
+    # On Linux the debug libcef.so has DCHECKs that break OSR rendering
+    # (CefRenderWidgetHostViewOSR::GetNativeView is NOTIMPLEMENTED and aborts
+    # the paint path in debug Chromium). Map debug to the release library so
+    # all build configs use the working release binary at both link and runtime.
+    if(UNIX AND NOT APPLE)
+      set_target_properties(unofficial::cef::libcef PROPERTIES
+          MAP_IMPORTED_CONFIG_DEBUG Release)
+    endif()
+
     if(WIN32)
         set_target_properties(unofficial::cef::libcef PROPERTIES
             IMPORTED_LOCATION_RELEASE "${_cef_root}/bin/libcef.dll"
