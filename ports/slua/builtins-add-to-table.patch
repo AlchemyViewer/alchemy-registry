@@ -1,0 +1,64 @@
+diff --git a/Tailslide/tailslide/builtins.cc b/Tailslide/tailslide/builtins.cc
+index de30a83..d866c0b 100644
+--- a/Tailslide/tailslide/builtins.cc
++++ b/Tailslide/tailslide/builtins.cc
+@@ -255,31 +255,34 @@ static bool parse_builtins(std::istream& stream, const char* source_name)
+     return ok;
+ }
+ 
+-// The symbol table is process-global, so only the first load counts. Later
+-// calls are no-ops that report success.
++// The symbol table is process-global and only ever added to. The builtins
++// embedded in Luau.LSLBuiltins are loaded only into an empty one, so that a
++// host's own, loaded first, are not defined a second time underneath them.
+ static bool gBuiltinsLoaded = false;
+ 
+ // Not thread-safe.
+-// Loads builtins from a NUL-terminated buffer in builtins.txt format.
++// Loads builtins from a NUL-terminated buffer in builtins.txt format, adding
++// them to any loaded before.
+ // Returns false if any definitions couldn't be loaded.
+ bool tailslide_init_builtins_from_data(const char* data)
+ {
+-    if (gBuiltinsLoaded)
+-        return true;
+     gBuiltinsLoaded = true;
+     std::istringstream stream(data);
+     return parse_builtins(stream, "<data>");
+ }
+ 
+ // Not thread-safe.
+-// If builtins_file is nullptr, uses the builtins.txt embedded in Luau.LSLBuiltins.
++// If builtins_file is nullptr, uses the builtins.txt embedded in Luau.LSLBuiltins,
++// and only if nothing has been loaded yet.
+ // Returns false if the file couldn't be opened or any definitions couldn't be loaded.
+ bool tailslide_init_builtins(const char* builtins_file)
+ {
+-    if (gBuiltinsLoaded)
+-        return true;
+     if (builtins_file == nullptr)
++    {
++        if (gBuiltinsLoaded)
++            return true;
+         return tailslide_init_builtins_from_data(luauSL_default_builtins_text());
++    }
+     gBuiltinsLoaded = true;
+ 
+     // Load from file
+diff --git a/Tailslide/tailslide/lslmini.hh b/Tailslide/tailslide/lslmini.hh
+index 3bed510..2c312f3 100644
+--- a/Tailslide/tailslide/lslmini.hh
++++ b/Tailslide/tailslide/lslmini.hh
+@@ -778,9 +778,9 @@ class LSLScript : public LSLASTNode {
+     void validateGlobals(bool mono_semantics);
+ };
+ 
+-// Not thread-safe. Loads builtins from a file, or from the builtins.txt embedded
+-// in Luau.LSLBuiltins when `builtins_file` is null. Only the first call loads
+-// anything, later ones return true without looking at their argument.
++// Not thread-safe. Loads builtins from a file, adding them to any loaded before,
++// or from the builtins.txt embedded in Luau.LSLBuiltins when `builtins_file` is
++// null -- that only into an empty table, and otherwise returns true.
+ // Definitions that can't be read are skipped with a message on stderr, returns
+ // false if that happened or the file couldn't be opened.
+ bool tailslide_init_builtins(const char *builtins_file);
