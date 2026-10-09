@@ -65,7 +65,7 @@
       "port-version": 2
     },
     "md4c": {
-      "baseline": "2026-06-17",
+      "baseline": "0.6.0",
       "port-version": 0
     },
     "minizip": {
