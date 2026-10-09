@@ -7,7 +7,7 @@ vcpkg_download_distfile(
     SENTRY_ARCHIVE
     URLS "https://github.com/getsentry/sentry-cocoa/releases/download/${VERSION}/SentryObjC-Dynamic.xcframework.zip"
     FILENAME "sentry-cocoa.${VERSION}.SentryObjC-Dynamic.xcframework.zip"
-    SHA512 42272ac36845c9fe4f6fc316418eb905144c4b28945a359f0071cf353cb890f9bd5c9ebf916d90e31e073f3445329421c01bbe548a6ddceef6ee07ac93ec6480
+    SHA512 a7db283360924bcae481d5421edcff2ecb514c9eccc9dffd93c541b2c6c5b4eb46e7189d0988ebc4125deeb112e35708a640da4838bf2efa4e9a041fdc4b7dc2
 )
 
 vcpkg_download_distfile(
