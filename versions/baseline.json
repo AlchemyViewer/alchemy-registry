@@ -117,8 +117,8 @@
       "port-version": 4
     },
     "tailslide": {
-      "baseline": "1.5.14",
-      "port-version": 2
+      "baseline": "1.5.15",
+      "port-version": 0
     },
     "tinygltf": {
       "baseline": "3.0.0",
