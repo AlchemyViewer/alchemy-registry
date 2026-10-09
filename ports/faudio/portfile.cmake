@@ -5,15 +5,9 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO FNA-XNA/faudio
     REF "${FAUDIO_REF}"
-    SHA512 94a123767375a460e1cd87c582ec878adafa2cb976d9fb73f445e022ac9baa00bb2333c2f9c647911f0a6a0dcbb821cbe3e9c411f2bd77585121f1205a01fcc4
+    SHA512 3d1001caa1394b194e64a23ecbb859ab8a6d7f446d107b0554241df966a4123994dc6eccb78d21b89d4890aef5709db78534f5a6d775da44950ff6ebf1f6a669
     HEAD_REF master
     PATCHES
-        # Apple's arm64 linker (Xcode 26+) rejects merged globals where a
-        # packed-struct pointer field lands at a non-8-byte-aligned offset.
-        # F3DAUDIO_DISTANCE_CURVE is pack(1) with `pPoints` as its first
-        # field; force the static curve instances in F3DAudio.c / FACT3D.c
-        # to pointer alignment so the link succeeds.
-        apple-arm64-curve-alignment.patch
         # Guard against uint64_t underflow in toDecode calculation when the
         # frequency ratio changes between mix calls.
         fix-todecode-underflow.patch
