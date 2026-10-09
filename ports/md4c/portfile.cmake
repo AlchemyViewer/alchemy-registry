@@ -1,10 +1,10 @@
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO mity/md4c
-    # The footnote and admonition block types tracy's markdown renderer switches
-    # on landed after release-0.5.3; this is the commit tracy itself pins.
-    REF 65c6c9d72cebd9a731aaa5597414ce04d9ea5de3
-    SHA512 4a4971d340f44238259c97eadc08f84fec180bc24db3b4db1d997a08d11e36a47ae10a2b127fb7d149a33b326bf6bc43ab71dc664d5f6bf9ea83ca111ebcacc9
+    # The first release with the footnote and admonition block types tracy's
+    # markdown renderer switches on.
+    REF "v${VERSION}"
+    SHA512 a8b3deba8b6e25b11cfc8f796ff8299d47f73c0e668badeaadd38609d72d1d301c662e17f0fab6ccefe382d83bad6f47a3aedf68a16021521822cc7a285efcad
     HEAD_REF master
     PATCHES
         "cmake.patch"
