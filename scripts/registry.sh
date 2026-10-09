@@ -189,7 +189,7 @@ gh_api() {
     fi
 }
 
-json_field() { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" | head -1 | sed -E 's/.*:[[:space:]]*"//; s/"$//'; }
+json_field() { { grep -oE "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" || true; } | head -1 | sed -E 's/.*:[[:space:]]*"//; s/"$//'; }
 
 download() {
     local url="$1" out="$2"
