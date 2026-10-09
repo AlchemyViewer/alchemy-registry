@@ -10,6 +10,7 @@ vcpkg_from_github(
         fix-imgui-patch.patch
         downgrade-capstone-5.patch # tracy wants capstone-6-alpha but vcpkg ships the most recent production capstone, 5.0.6 as of 2026-02-04
         downgrade-libcurl-7.patch # CURLOPT_CA_CACHE_TIMEOUT is 7.87.0; the viewer's overlay curl port is older
+        calibrate-timer-on-connect.patch # the timer's 200 ms calibration is done when a server first connects, not as every process that links tracy starts
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS

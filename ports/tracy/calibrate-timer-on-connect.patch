@@ -1,0 +1,34 @@
+diff --git a/public/client/TracyProfiler.cpp b/public/client/TracyProfiler.cpp
+index 90ff8ea..8af48c4 100644
+--- a/public/client/TracyProfiler.cpp
++++ b/public/client/TracyProfiler.cpp
+@@ -1565,7 +1565,9 @@ Profiler::Profiler()
+ #  endif
+ #endif
+ 
+-    CalibrateTimer();
++    // Calibrating the timer sleeps for 200 ms, and only a server needs the result.
++    // The worker calibrates when the first one connects; zero means not yet.
++    m_timerMul = 0.;
+     CalibrateDelay();
+     ReportTopology();
+ 
+@@ -1859,7 +1861,7 @@ void Profiler::Worker()
+ #endif
+ 
+     WelcomeMessage welcome;
+-    MemWrite( &welcome.timerMul, m_timerMul );
++    // welcome.timerMul is written when a server connects, once the timer is calibrated.
+     MemWrite( &welcome.initBegin, GetInitTime() );
+     MemWrite( &welcome.initEnd, m_timeBegin.load( std::memory_order_relaxed ) );
+     MemWrite( &welcome.resolution, m_resolution );
+@@ -2045,6 +2047,9 @@ void Profiler::Worker()
+         HandshakeStatus handshake = HandshakeWelcome;
+         m_sock->Send( &handshake, sizeof( handshake ) );
+ 
++        if( m_timerMul == 0. ) CalibrateTimer();
++        MemWrite( &welcome.timerMul, m_timerMul );
++
+         LZ4_resetStream( (LZ4_stream_t*)m_stream );
+         m_sock->Send( &welcome, sizeof( welcome ) );
+ 
