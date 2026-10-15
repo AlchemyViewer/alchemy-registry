@@ -20,12 +20,18 @@ vcpkg_download_distfile(
 # arguments that take an asset's name or its UUID. LL's generator reads the
 # keys it knows and passes over the rest, so what it makes is unchanged. An
 # editor offers the object's items of the kind inside such a string.
+#
+# event-allocation.patch has LL's generator hand each event its grammar
+# makes to the compiler's allocation manager, as it hands the event's
+# identifiers and as the grammar's own rules hand theirs, so a compile frees
+# its events when it ends.
 vcpkg_extract_source_archive(
     LSL_DIR
     ARCHIVE "${LSL_ARCHIVE}"
     NO_REMOVE_ONE_LEVEL
     PATCHES
         inventory-kind.patch
+        event-allocation.patch
 )
 
 # Named rather than globbed so a new upstream file has to be adopted knowingly.

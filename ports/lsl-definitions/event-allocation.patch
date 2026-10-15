@@ -1,0 +1,20 @@
+LL's generator writes each event's rule in their LSL compiler's grammar:
+the event's identifiers, each made and handed to gAllocationManager, which
+deletes what it holds when a compile ends, and then the event itself, made
+and handed to nothing. The rules the grammar writes by hand hand the event
+over too. So every event a script handles was left behind by each compile,
+with what it held, as LeakSanitizer reports. The generated rule hands the
+event to gAllocationManager as well.
+
+diff --git a/lsl_definitions/python/lsl_definitions/generators/lscript_compiler.py b/lsl_definitions/python/lsl_definitions/generators/lscript_compiler.py
+index 357f2d4..76b97da 100644
+--- a/lsl_definitions/python/lsl_definitions/generators/lscript_compiler.py
++++ b/lsl_definitions/python/lsl_definitions/generators/lscript_compiler.py
+@@ -266,6 +266,7 @@ def gen_parser_file(definitions: LSLDefinitions, template_path: str) -> str:
+                 arg_str = ", " + arg_str
+             generated_event_definitions += (
+                 f"        $$ = new LLScript{event_class}Event(gLine, gColumn{arg_str});\n"
++                "        gAllocationManager->addAllocation($$);\n"
+             )
+ 
+             generated_event_definitions += "    }\n    ;\n\n"
