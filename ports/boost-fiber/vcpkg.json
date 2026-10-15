@@ -1,6 +1,8 @@
 {
+  "$comment": "vcpkg's boost-fiber with try-lock-owner-race.patch: try_lock read the owner after letting its spinlock go, a data race. Drop the patch when Boost.Fiber fixes it upstream.",
   "name": "boost-fiber",
   "version": "1.92.0",
+  "port-version": 1,
   "description": "Boost fiber module",
   "homepage": "https://www.boost.org/library/latest/fiber/",
   "documentation": "https://www.boost.org/libs/fiber",

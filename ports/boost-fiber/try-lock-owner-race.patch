@@ -1,0 +1,91 @@
+try_lock, on each of Boost.Fiber's four mutexes, takes the mutex under the
+wait queue's spinlock if it is free, lets the spinlock go, yields, and only
+then reads owner_ to say whether it got it. A lock() or unlock() on another
+thread writes owner_ under that spinlock meanwhile, so the read is a data
+race, which ThreadSanitizer reports wherever a thread try_locks a fiber mutex
+another thread uses. The answer is the same either way: only the owner
+clears owner_, and a fiber that does not hold the mutex is in no wait queue
+to be handed it, so whether this fiber holds it cannot change across the
+yield. It is read under the spinlock instead. Boost's develop and master
+still read it after.
+
+diff --git a/src/mutex.cpp b/src/mutex.cpp
+index 7b06451..3b0b718 100644
+--- a/src/mutex.cpp
++++ b/src/mutex.cpp
+@@ -53,10 +53,14 @@ mutex::try_lock() {
+     if ( nullptr == owner_) {
+         owner_ = active_ctx;
+     }
++    // whether this fiber holds the mutex is read under the spinlock: only
++    // the owner clears owner_, so the answer holds across the yield, and
++    // a read after it would race another thread's lock() or unlock()
++    bool const locked = active_ctx == owner_;
+     lk.unlock();
+     // let other fiber release the lock
+     active_ctx->yield();
+-    return active_ctx == owner_;
++    return locked;
+ }
+ 
+ void
+diff --git a/src/recursive_mutex.cpp b/src/recursive_mutex.cpp
+index 9358066..022e22f 100644
+--- a/src/recursive_mutex.cpp
++++ b/src/recursive_mutex.cpp
+@@ -49,10 +49,14 @@ recursive_mutex::try_lock() noexcept {
+     } else if ( active_ctx == owner_) {
+         ++count_;
+     }
++    // whether this fiber holds the mutex is read under the spinlock: only
++    // the owner clears owner_, so the answer holds across the yield, and
++    // a read after it would race another thread's lock() or unlock()
++    bool const locked = active_ctx == owner_;
+     lk.unlock();
+     // let other fiber release the lock
+     context::active()->yield();
+-    return active_ctx == owner_;
++    return locked;
+ }
+ 
+ void
+diff --git a/src/recursive_timed_mutex.cpp b/src/recursive_timed_mutex.cpp
+index 5958c72..b0f4e25 100644
+--- a/src/recursive_timed_mutex.cpp
++++ b/src/recursive_timed_mutex.cpp
+@@ -72,10 +72,14 @@ recursive_timed_mutex::try_lock() noexcept {
+     } else if ( active_ctx == owner_) {
+         ++count_;
+     }
++    // whether this fiber holds the mutex is read under the spinlock: only
++    // the owner clears owner_, so the answer holds across the yield, and
++    // a read after it would race another thread's lock() or unlock()
++    bool const locked = active_ctx == owner_;
+     lk.unlock();
+     // let other fiber release the lock
+     active_ctx->yield();
+-    return active_ctx == owner_;
++    return locked;
+ }
+ 
+ void
+diff --git a/src/timed_mutex.cpp b/src/timed_mutex.cpp
+index d0482c5..091e734 100644
+--- a/src/timed_mutex.cpp
++++ b/src/timed_mutex.cpp
+@@ -68,10 +68,14 @@ timed_mutex::try_lock() {
+     if ( nullptr == owner_) {
+         owner_ = active_ctx;
+     }
++    // whether this fiber holds the mutex is read under the spinlock: only
++    // the owner clears owner_, so the answer holds across the yield, and
++    // a read after it would race another thread's lock() or unlock()
++    bool const locked = active_ctx == owner_;
+     lk.unlock();
+     // let other fiber release the lock
+     active_ctx->yield();
+-    return active_ctx == owner_;
++    return locked;
+ }
+ 
+ void
