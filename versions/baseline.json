@@ -62,7 +62,7 @@
     },
     "lsl-definitions": {
       "baseline": "0.7.0",
-      "port-version": 2
+      "port-version": 3
     },
     "md4c": {
       "baseline": "0.6.0",
