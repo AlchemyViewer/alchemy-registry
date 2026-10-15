@@ -1,0 +1,28 @@
+scheduler::schedule_from_remote, which another thread calls to wake a fiber
+of this scheduler's thread, puts the fiber on the remote ready queue under
+the queue's spinlock, lets the spinlock go, and then notifies the
+scheduling algorithm, through algo_, a member of the scheduler. Between the
+two, the scheduler's own thread may take the fiber from the queue, run it
+to its end, finish, and destroy the scheduler at thread exit, so the notify
+uses what is freed: round_robin::notify signals a condition variable it
+has let its mutex go before, which ThreadSanitizer reports destroyed under
+the signal. Notified before the spinlock goes, the scheduler's thread,
+which takes the spinlock to see the fiber, cannot run it until the notify
+is done. Boost's develop and master still notify after.
+
+diff --git a/src/scheduler.cpp b/src/scheduler.cpp
+index 69ae61c..0ec5dae 100644
+--- a/src/scheduler.cpp
++++ b/src/scheduler.cpp
+@@ -208,8 +208,9 @@ scheduler::schedule_from_remote( context * ctx) noexcept {
+     BOOST_ASSERT( nullptr != dispatcher_ctx_.get() );
+     // push new context to remote ready-queue
+     ctx->remote_ready_link( remote_ready_queue_);
+-    lk.unlock();
+-    // notify scheduler
++    // notify scheduler before letting the spinlock go: this scheduler's
++    // thread takes it to see ctx, so cannot run ctx, end, and destroy this
++    // scheduler and its algorithm while the notify is still using them
+     algo_->notify();
+ }
+ #endif
