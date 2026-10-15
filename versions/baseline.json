@@ -150,7 +150,7 @@
     },
     "zlib": {
       "baseline": "2.3.3",
-      "port-version": 2
+      "port-version": 3
     }
   }
 }
