@@ -11,6 +11,7 @@ vcpkg_from_github(
     PATCHES
         try-lock-owner-race.patch
         remote-wake-notify.patch
+        tsan-mutex-annotations.patch
 )
 
 set(FEATURE_OPTIONS "")

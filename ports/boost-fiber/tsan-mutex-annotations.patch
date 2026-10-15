@@ -1,0 +1,285 @@
+ThreadSanitizer sees a fiber's mutex only as the atomics of its spinlock:
+it follows their ordering, so a race on what the mutex guards is still
+found, but it cannot tell the mutex is one -- which mutexes were held where
+a race is reported, the order they are taken in, one destroyed while held.
+Where Boost.Context reports each fiber to it (BOOST_USE_TSAN), each mutex
+is told to it now, through its mutex annotations: at the moment a fiber
+comes to hold it and the moment it lets it go, under the spinlock, back to
+back, so that nothing of the spinlock or the wait queue is hidden from it.
+A try_lock and a timed lock are told as tries, which may not deadlock, and
+the recursive mutexes as reentrant. The condition variable lets its mutex
+go and takes it again through them. Without BOOST_USE_TSAN nothing changes.
+
+diff --git a/include/boost/fiber/detail/tsan.hpp b/include/boost/fiber/detail/tsan.hpp
+new file mode 100644
+index 0000000..62358c6
+--- /dev/null
++++ b/include/boost/fiber/detail/tsan.hpp
+@@ -0,0 +1,35 @@
++//          Distributed under the Boost Software License, Version 1.0.
++//    (See accompanying file LICENSE_1_0.txt or copy at
++//          http://www.boost.org/LICENSE_1_0.txt)
++
++#ifndef BOOST_FIBERS_DETAIL_TSAN_H
++#define BOOST_FIBERS_DETAIL_TSAN_H
++
++// ThreadSanitizer's mutex annotations, where Boost.Context reports each
++// fiber to it (BOOST_USE_TSAN): a fiber's mutex is told to it as a mutex at
++// the moment a fiber comes to hold it and the moment it lets it go, under
++// the mutex's spinlock. The spinlock and the wait queue stay as TSan sees
++// them otherwise, atomics and all; what the annotations add is the mutex
++// itself -- which are held where a race is reported, the order they are
++// taken in, one destroyed while held.
++
++#if defined(BOOST_USE_TSAN)
++# include <sanitizer/tsan_interface.h>
++# define BOOST_FIBERS_TSAN_ACQUIRED(m, flags) \
++    ( __tsan_mutex_pre_lock( (m), (flags) ), __tsan_mutex_post_lock( (m), (flags), 0) )
++# define BOOST_FIBERS_TSAN_RELEASED(m) \
++    ( __tsan_mutex_pre_unlock( (m), 0), __tsan_mutex_post_unlock( (m), 0) )
++# define BOOST_FIBERS_TSAN_DESTROYED(m) __tsan_mutex_destroy( (m), 0)
++// a try_lock, and a timed lock, which may not deadlock
++# define BOOST_FIBERS_TSAN_TRY __tsan_mutex_try_lock
++// a recursive mutex, which its holder takes again
++# define BOOST_FIBERS_TSAN_REENTRANT __tsan_mutex_write_reentrant
++#else
++# define BOOST_FIBERS_TSAN_ACQUIRED(m, flags) ((void) 0)
++# define BOOST_FIBERS_TSAN_RELEASED(m) ((void) 0)
++# define BOOST_FIBERS_TSAN_DESTROYED(m) ((void) 0)
++# define BOOST_FIBERS_TSAN_TRY 0
++# define BOOST_FIBERS_TSAN_REENTRANT 0
++#endif
++
++#endif // BOOST_FIBERS_DETAIL_TSAN_H
+diff --git a/include/boost/fiber/mutex.hpp b/include/boost/fiber/mutex.hpp
+index 2291cf6..41b2fc2 100644
+--- a/include/boost/fiber/mutex.hpp
++++ b/include/boost/fiber/mutex.hpp
+@@ -14,6 +14,7 @@
+ #include <boost/fiber/context.hpp>
+ #include <boost/fiber/detail/config.hpp>
+ #include <boost/fiber/detail/spinlock.hpp>
++#include <boost/fiber/detail/tsan.hpp>
+ #include <boost/fiber/waker.hpp>
+ 
+ #ifdef BOOST_HAS_ABI_HEADERS
+@@ -43,6 +44,7 @@ public:
+ 
+     ~mutex() {
+         BOOST_ASSERT( nullptr == owner_);
++        BOOST_FIBERS_TSAN_DESTROYED( this);
+         BOOST_ASSERT( wait_queue_.empty() );
+     }
+ 
+diff --git a/include/boost/fiber/recursive_mutex.hpp b/include/boost/fiber/recursive_mutex.hpp
+index a793eb1..4a4c5d1 100644
+--- a/include/boost/fiber/recursive_mutex.hpp
++++ b/include/boost/fiber/recursive_mutex.hpp
+@@ -18,6 +18,7 @@
+ #include <boost/fiber/context.hpp>
+ #include <boost/fiber/detail/config.hpp>
+ #include <boost/fiber/detail/spinlock.hpp>
++#include <boost/fiber/detail/tsan.hpp>
+ #include <boost/fiber/waker.hpp>
+ 
+ #ifdef BOOST_HAS_ABI_HEADERS
+@@ -49,6 +50,7 @@ public:
+     ~recursive_mutex() {
+         BOOST_ASSERT( nullptr == owner_);
+         BOOST_ASSERT( 0 == count_);
++        BOOST_FIBERS_TSAN_DESTROYED( this);
+         BOOST_ASSERT( wait_queue_.empty() );
+     }
+ 
+diff --git a/include/boost/fiber/recursive_timed_mutex.hpp b/include/boost/fiber/recursive_timed_mutex.hpp
+index 96bc927..50b6880 100644
+--- a/include/boost/fiber/recursive_timed_mutex.hpp
++++ b/include/boost/fiber/recursive_timed_mutex.hpp
+@@ -20,6 +20,7 @@
+ #include <boost/fiber/detail/config.hpp>
+ #include <boost/fiber/detail/convert.hpp>
+ #include <boost/fiber/detail/spinlock.hpp>
++#include <boost/fiber/detail/tsan.hpp>
+ #include <boost/fiber/waker.hpp>
+ 
+ #ifdef BOOST_HAS_ABI_HEADERS
+@@ -53,6 +54,7 @@ public:
+     ~recursive_timed_mutex() {
+         BOOST_ASSERT( nullptr == owner_);
+         BOOST_ASSERT( 0 == count_);
++        BOOST_FIBERS_TSAN_DESTROYED( this);
+         BOOST_ASSERT( wait_queue_.empty() );
+     }
+ 
+diff --git a/include/boost/fiber/timed_mutex.hpp b/include/boost/fiber/timed_mutex.hpp
+index 3cdb91d..b068467 100644
+--- a/include/boost/fiber/timed_mutex.hpp
++++ b/include/boost/fiber/timed_mutex.hpp
+@@ -16,6 +16,7 @@
+ #include <boost/fiber/detail/config.hpp>
+ #include <boost/fiber/detail/convert.hpp>
+ #include <boost/fiber/detail/spinlock.hpp>
++#include <boost/fiber/detail/tsan.hpp>
+ #include <boost/fiber/waker.hpp>
+ 
+ #ifdef BOOST_HAS_ABI_HEADERS
+@@ -47,6 +48,7 @@ public:
+ 
+     ~timed_mutex() {
+         BOOST_ASSERT( nullptr == owner_);
++        BOOST_FIBERS_TSAN_DESTROYED( this);
+         BOOST_ASSERT( wait_queue_.empty() );
+     }
+ 
+diff --git a/src/mutex.cpp b/src/mutex.cpp
+index 3b0b718..50a5797 100644
+--- a/src/mutex.cpp
++++ b/src/mutex.cpp
+@@ -34,6 +34,7 @@ mutex::lock() {
+         }
+         if ( nullptr == owner_) {
+             owner_ = active_ctx;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, 0);
+             return;
+         }
+ 
+@@ -52,6 +53,7 @@ mutex::try_lock() {
+     }
+     if ( nullptr == owner_) {
+         owner_ = active_ctx;
++        BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_TRY);
+     }
+     // whether this fiber holds the mutex is read under the spinlock: only
+     // the owner clears owner_, so the answer holds across the yield, and
+@@ -72,6 +74,7 @@ mutex::unlock() {
+                 std::make_error_code( std::errc::operation_not_permitted),
+                 "boost fiber: no  privilege to perform the operation" };
+     }
++    BOOST_FIBERS_TSAN_RELEASED( this);
+     owner_ = nullptr;
+ 
+     wait_queue_.notify_one();
+diff --git a/src/recursive_mutex.cpp b/src/recursive_mutex.cpp
+index 022e22f..d4c1136 100644
+--- a/src/recursive_mutex.cpp
++++ b/src/recursive_mutex.cpp
+@@ -27,11 +27,13 @@ recursive_mutex::lock() {
+         detail::spinlock_lock lk{ wait_queue_splk_ };
+         if ( active_ctx == owner_) {
+             ++count_;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT);
+             return;
+         }
+         if ( nullptr == owner_) {
+             owner_ = active_ctx;
+             count_ = 1;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT);
+             return;
+         }
+ 
+@@ -46,8 +48,10 @@ recursive_mutex::try_lock() noexcept {
+     if ( nullptr == owner_) {
+         owner_ = active_ctx;
+         count_ = 1;
++        BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT | BOOST_FIBERS_TSAN_TRY);
+     } else if ( active_ctx == owner_) {
+         ++count_;
++        BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT | BOOST_FIBERS_TSAN_TRY);
+     }
+     // whether this fiber holds the mutex is read under the spinlock: only
+     // the owner clears owner_, so the answer holds across the yield, and
+@@ -68,6 +72,7 @@ recursive_mutex::unlock() {
+                 std::make_error_code( std::errc::operation_not_permitted),
+                 "boost fiber: no  privilege to perform the operation");
+     }
++    BOOST_FIBERS_TSAN_RELEASED( this);
+     if ( 0 == --count_) {
+         owner_ = nullptr;
+         wait_queue_.notify_one();
+diff --git a/src/recursive_timed_mutex.cpp b/src/recursive_timed_mutex.cpp
+index b0f4e25..e09a4f7 100644
+--- a/src/recursive_timed_mutex.cpp
++++ b/src/recursive_timed_mutex.cpp
+@@ -30,11 +30,13 @@ recursive_timed_mutex::try_lock_until_( std::chrono::steady_clock::time_point co
+         detail::spinlock_lock lk{ wait_queue_splk_ };
+         if ( active_ctx == owner_) {
+             ++count_;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT | BOOST_FIBERS_TSAN_TRY);
+             return true;
+         }
+         if ( nullptr == owner_) {
+             owner_ = active_ctx;
+             count_ = 1;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT | BOOST_FIBERS_TSAN_TRY);
+             return true;
+         }
+         if ( ! wait_queue_.suspend_and_wait_until( lk, active_ctx, timeout_time)) {
+@@ -51,11 +53,13 @@ recursive_timed_mutex::lock() {
+         detail::spinlock_lock lk{ wait_queue_splk_ };
+         if ( active_ctx == owner_) {
+             ++count_;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT);
+             return;
+         }
+         if ( nullptr == owner_) {
+             owner_ = active_ctx;
+             count_ = 1;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT);
+             return;
+         }
+         wait_queue_.suspend_and_wait( lk, active_ctx);
+@@ -69,8 +73,10 @@ recursive_timed_mutex::try_lock() noexcept {
+     if ( nullptr == owner_) {
+         owner_ = active_ctx;
+         count_ = 1;
++        BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT | BOOST_FIBERS_TSAN_TRY);
+     } else if ( active_ctx == owner_) {
+         ++count_;
++        BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_REENTRANT | BOOST_FIBERS_TSAN_TRY);
+     }
+     // whether this fiber holds the mutex is read under the spinlock: only
+     // the owner clears owner_, so the answer holds across the yield, and
+@@ -91,6 +97,7 @@ recursive_timed_mutex::unlock() {
+                 std::make_error_code( std::errc::operation_not_permitted),
+                 "boost fiber: no  privilege to perform the operation" };
+     }
++    BOOST_FIBERS_TSAN_RELEASED( this);
+     if ( 0 == --count_) {
+         owner_ = nullptr;
+         wait_queue_.notify_one();
+diff --git a/src/timed_mutex.cpp b/src/timed_mutex.cpp
+index 091e734..8175cdf 100644
+--- a/src/timed_mutex.cpp
++++ b/src/timed_mutex.cpp
+@@ -29,6 +29,7 @@ timed_mutex::try_lock_until_( std::chrono::steady_clock::time_point const& timeo
+         detail::spinlock_lock lk{ wait_queue_splk_ };
+         if ( nullptr == owner_) {
+             owner_ = active_ctx;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_TRY);
+             return true;
+         }
+         if ( ! wait_queue_.suspend_and_wait_until( lk, active_ctx, timeout_time)) {
+@@ -50,6 +51,7 @@ timed_mutex::lock() {
+         }
+         if ( nullptr == owner_) {
+             owner_ = active_ctx;
++            BOOST_FIBERS_TSAN_ACQUIRED( this, 0);
+             return;
+         }
+         wait_queue_.suspend_and_wait( lk, active_ctx);
+@@ -67,6 +69,7 @@ timed_mutex::try_lock() {
+     }
+     if ( nullptr == owner_) {
+         owner_ = active_ctx;
++        BOOST_FIBERS_TSAN_ACQUIRED( this, BOOST_FIBERS_TSAN_TRY);
+     }
+     // whether this fiber holds the mutex is read under the spinlock: only
+     // the owner clears owner_, so the answer holds across the yield, and
+@@ -87,6 +90,7 @@ timed_mutex::unlock() {
+                 std::make_error_code( std::errc::operation_not_permitted),
+                 "boost fiber: no  privilege to perform the operation" };
+     }
++    BOOST_FIBERS_TSAN_RELEASED( this);
+     owner_ = nullptr;
+ 
+     wait_queue_.notify_one();
