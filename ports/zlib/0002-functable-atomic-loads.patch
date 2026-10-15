@@ -1,0 +1,131 @@
+Read the function table with atomic loads
+
+init_functable fills the table with atomic stores, on whichever thread
+first calls through one of its stubs, while other threads may already
+be calling through it: two threads inflating PNGs at once is enough.
+Every call reads its entry with a plain load, which beside an atomic
+store is a data race, and ThreadSanitizer reports one for each entry
+the first calls touch.
+
+Read each entry with a relaxed atomic load. Every value an entry holds
+is a function that can be called, its stub or the one chosen, so there
+is nothing for an ordering to order; on x86-64 and ARM64 a relaxed load
+is the same instruction as a plain one. Compilers without the GNU
+atomic builtins keep the plain load, as they keep their own store.
+
+diff --git a/functable.c b/functable.c
+index 489399c..74831bf 100644
+--- a/functable.c
++++ b/functable.c
+@@ -380,67 +380,67 @@ static int force_init_stub(void) {
+ 
+ static uint32_t adler32_stub(uint32_t adler, const uint8_t* buf, size_t len) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.adler32(adler, buf, len);
++    return FUNCTABLE_CALL(adler32)(adler, buf, len);
+ }
+ 
+ static uint32_t adler32_fold_copy_stub(uint32_t adler, uint8_t* dst, const uint8_t* src, size_t len) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.adler32_fold_copy(adler, dst, src, len);
++    return FUNCTABLE_CALL(adler32_fold_copy)(adler, dst, src, len);
+ }
+ 
+ static uint8_t* chunkmemset_safe_stub(uint8_t* out, uint8_t *from, unsigned len, unsigned left) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.chunkmemset_safe(out, from, len, left);
++    return FUNCTABLE_CALL(chunkmemset_safe)(out, from, len, left);
+ }
+ 
+ static uint32_t compare256_stub(const uint8_t* src0, const uint8_t* src1) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.compare256(src0, src1);
++    return FUNCTABLE_CALL(compare256)(src0, src1);
+ }
+ 
+ static uint32_t crc32_stub(uint32_t crc, const uint8_t* buf, size_t len) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.crc32(crc, buf, len);
++    return FUNCTABLE_CALL(crc32)(crc, buf, len);
+ }
+ 
+ static void crc32_fold_stub(crc32_fold* crc, const uint8_t* src, size_t len, uint32_t init_crc) {
+     FUNCTABLE_INIT_ABORT;
+-    functable.crc32_fold(crc, src, len, init_crc);
++    FUNCTABLE_CALL(crc32_fold)(crc, src, len, init_crc);
+ }
+ 
+ static void crc32_fold_copy_stub(crc32_fold* crc, uint8_t* dst, const uint8_t* src, size_t len) {
+     FUNCTABLE_INIT_ABORT;
+-    functable.crc32_fold_copy(crc, dst, src, len);
++    FUNCTABLE_CALL(crc32_fold_copy)(crc, dst, src, len);
+ }
+ 
+ static uint32_t crc32_fold_final_stub(crc32_fold* crc) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.crc32_fold_final(crc);
++    return FUNCTABLE_CALL(crc32_fold_final)(crc);
+ }
+ 
+ static uint32_t crc32_fold_reset_stub(crc32_fold* crc) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.crc32_fold_reset(crc);
++    return FUNCTABLE_CALL(crc32_fold_reset)(crc);
+ }
+ 
+ static void inflate_fast_stub(PREFIX3(stream) *strm, uint32_t start) {
+     FUNCTABLE_INIT_ABORT;
+-    functable.inflate_fast(strm, start);
++    FUNCTABLE_CALL(inflate_fast)(strm, start);
+ }
+ 
+ static uint32_t longest_match_stub(deflate_state* const s, Pos cur_match) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.longest_match(s, cur_match);
++    return FUNCTABLE_CALL(longest_match)(s, cur_match);
+ }
+ 
+ static uint32_t longest_match_slow_stub(deflate_state* const s, Pos cur_match) {
+     FUNCTABLE_INIT_ABORT;
+-    return functable.longest_match_slow(s, cur_match);
++    return FUNCTABLE_CALL(longest_match_slow)(s, cur_match);
+ }
+ 
+ static void slide_hash_stub(deflate_state* s) {
+     FUNCTABLE_INIT_ABORT;
+-    functable.slide_hash(s);
++    FUNCTABLE_CALL(slide_hash)(s);
+ }
+ 
+ /* functable init */
+diff --git a/functable.h b/functable.h
+index 91308e5..46d5aea 100644
+--- a/functable.h
++++ b/functable.h
+@@ -43,11 +43,23 @@ struct functable_s {
+ Z_INTERNAL extern struct functable_s functable;
+ 
+ 
++/* Each entry is read with an atomic load, as init_functable writes it with
++ * an atomic store: the first call through the table on any thread fills it
++ * while other threads may be calling through it. Every value an entry holds
++ * is a function that can be called, a stub or the one chosen, so relaxed is
++ * enough; a plain load beside the store is still a data race.
++ */
++#  if defined(__GNUC__) || defined(__clang__)
++#    define FUNCTABLE_LOAD(name) __atomic_load_n(&functable.name, __ATOMIC_RELAXED)
++#  else
++#    define FUNCTABLE_LOAD(name) functable.name
++#  endif
++
+ /* Explicitly indicate functions are conditionally dispatched.
+  */
+-#  define FUNCTABLE_INIT if (functable.force_init()) {return Z_VERSION_ERROR;}
+-#  define FUNCTABLE_CALL(name) functable.name
+-#  define FUNCTABLE_FPTR(name) functable.name
++#  define FUNCTABLE_INIT if (FUNCTABLE_LOAD(force_init)()) {return Z_VERSION_ERROR;}
++#  define FUNCTABLE_CALL(name) FUNCTABLE_LOAD(name)
++#  define FUNCTABLE_FPTR(name) FUNCTABLE_LOAD(name)
+ 
+ #endif
+ 

@@ -6,6 +6,7 @@ vcpkg_from_github(
     HEAD_REF develop
     PATCHES
         0001-chunkset-bound-masked-readwrite-tails.patch
+        0002-functable-atomic-loads.patch
 )
 
 # Set ZLIB_COMPAT in the triplet file to turn on
