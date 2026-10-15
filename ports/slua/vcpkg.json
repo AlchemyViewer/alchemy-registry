@@ -1,6 +1,7 @@
 {
   "name": "slua",
   "version": "0.732.16",
+  "port-version": 1,
   "description": "The offline components of SLua, Second Life's fork of Luau: the parser, type checker, linter and compiler, with its compiler for LSL on Luau over its own Tailslide",
   "homepage": "https://github.com/secondlife/slua",
   "license": "MIT",

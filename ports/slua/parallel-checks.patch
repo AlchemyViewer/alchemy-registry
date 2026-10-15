@@ -1,0 +1,99 @@
+Luau's frontend checks modules in parallel when its host gives it a way to
+run tasks (Frontend::checkQueuedModules), and two things every check writes
+were shared between them. Each check told the frontend's one internal error
+reporter the name of the module it was checking, so threads copied names
+into the same string; upstream Luau has since given each check a reporter
+of its own (FFlag::LuauSplitIceHandler), as this does. And every free type
+and error type takes its index from a counter all threads incremented as a
+plain int, which upstream still does: the counters are atomic here, relaxed,
+since an index has only to differ from the others.
+
+diff --git a/Analysis/include/Luau/Unifiable.h b/Analysis/include/Luau/Unifiable.h
+index 132eda9..35a3c34 100644
+--- a/Analysis/include/Luau/Unifiable.h
++++ b/Analysis/include/Luau/Unifiable.h
+@@ -3,6 +3,7 @@
+ 
+ #include "Luau/Variant.h"
+ 
++#include <atomic>
+ #include <optional>
+ #include <string>
+ 
+@@ -114,7 +115,8 @@ struct Error
+     std::optional<Id> synthetic;
+ 
+ private:
+-    static int nextIndex;
++    // Errors are made on every thread that checks a module.
++    static std::atomic<int> nextIndex;
+ };
+ 
+ template<typename Id, typename... Value>
+diff --git a/Analysis/src/Frontend.cpp b/Analysis/src/Frontend.cpp
+index b2192d3..f8858b9 100644
+--- a/Analysis/src/Frontend.cpp
++++ b/Analysis/src/Frontend.cpp
+@@ -1387,6 +1387,10 @@ void Frontend::checkSCCBuildQueueItem(BuildQueueItem& item)
+ 
+     TypeCheckLimits typeCheckLimits = makeTypeCheckLimits(item.options);
+ 
++    // This check's own reporter, which it tells the name of each module it
++    // checks: the frontend's one is shared by the checks running in parallel.
++    InternalErrorReporter iceHandler{this->iceHandler.onInternalError};
++
+     UnifierSharedState unifierState{NotNull{&iceHandler}};
+     unifierState.counters.recursionLimit = FInt::LuauTypeInferRecursionLimit;
+     unifierState.counters.iterationLimit = typeCheckLimits.unifierIterationLimit.value_or(FInt::LuauTypeInferIterationLimit);
+@@ -2437,6 +2441,10 @@ ModulePtr Frontend::check(
+                 prepareModuleScope(name, scope, forAutocomplete);
+         };
+ 
++        // This check's own reporter, which it tells the module's name: the
++        // frontend's one is shared by the checks running in parallel.
++        InternalErrorReporter iceHandler{this->iceHandler.onInternalError, sourceModule.name};
++
+         try
+         {
+             return Luau::check(
+@@ -2466,6 +2474,9 @@ ModulePtr Frontend::check(
+     }
+     else
+     {
++        // As above.
++        InternalErrorReporter iceHandler{this->iceHandler.onInternalError, sourceModule.name};
++
+         TypeChecker typeChecker(
+             forAutocomplete ? globalsForAutocomplete.globalScope : globals.globalScope,
+             forAutocomplete ? &moduleResolverForAutocomplete : &moduleResolver,
+diff --git a/Analysis/src/Unifiable.cpp b/Analysis/src/Unifiable.cpp
+index d9f3947..73bb982 100644
+--- a/Analysis/src/Unifiable.cpp
++++ b/Analysis/src/Unifiable.cpp
+@@ -8,21 +8,22 @@ namespace Luau
+ namespace Unifiable
+ {
+ 
+-static int nextIndex = 0;
++// Free types are made on every thread that checks a module.
++static std::atomic<int> nextIndex = 0;
+ 
+ int freshIndex()
+ {
+-    return ++nextIndex;
++    return nextIndex.fetch_add(1, std::memory_order_relaxed) + 1;
+ }
+ 
+ template<typename Id>
+ Error<Id>::Error()
+-    : index(++nextIndex)
++    : index(nextIndex.fetch_add(1, std::memory_order_relaxed) + 1)
+ {
+ }
+ 
+ template<typename Id>
+-int Error<Id>::nextIndex = 0;
++std::atomic<int> Error<Id>::nextIndex = 0;
+ 
+ template struct Error<TypeId>;
+ template struct Error<TypePackId>;

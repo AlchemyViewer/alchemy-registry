@@ -11,6 +11,7 @@ vcpkg_from_github(
         builtins-add-to-table.patch
         lsl-debug-lines.patch
         lsl-jump-direction.patch
+        parallel-checks.patch
 )
 
 # The offline half of the fork: the parser, the type checker, the linter and
@@ -39,7 +40,10 @@ vcpkg_from_github(
 # stands against it in the script, not by where the two nodes were allocated,
 # which the compiler compared: the same script was JUMP one compile and
 # JUMPBACK, two bytes larger and an interrupt check different, the next
-# (lsl-jump-direction.patch).
+# (lsl-jump-direction.patch). Modules checked in parallel share nothing a
+# check writes: each has its own internal error reporter, as upstream Luau
+# now gives it, and free types' indices come from atomic counters
+# (parallel-checks.patch).
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
