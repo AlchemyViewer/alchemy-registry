@@ -1,7 +1,8 @@
 {
-  "$comment": "vcpkg's boost-context with arm64-pe-ontop-frame.patch: ontop_fcontext on Windows arm64 left the stack 16 bytes short. Drop this overlay when Boost.Context fixes it upstream.",
+  "$comment": "vcpkg's boost-context with arm64-pe-ontop-frame.patch: ontop_fcontext on Windows arm64 left the stack 16 bytes short; and asan-fake-stack-on-termination.patch: the ucontext fiber kept every finished fiber's ASan fake stack, testing the context it switched to for being done rather than the one it left. Drop each when Boost.Context fixes it upstream.",
   "name": "boost-context",
   "version": "1.92.0",
+  "port-version": 1,
   "description": "Boost context module",
   "homepage": "https://www.boost.org/library/latest/context/",
   "documentation": "https://www.boost.org/libs/context",

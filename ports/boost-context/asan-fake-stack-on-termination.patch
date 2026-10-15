@@ -1,0 +1,22 @@
+A fiber that has run to its end resumes the context it came from, and
+resume() tells AddressSanitizer of the switch, with no place to keep the
+fake stack of the context it leaves where that context is done, so that
+ASan frees it. It tested the context it switches to instead, which is never
+done, and so kept every finished fiber's fake stack: with
+detect_stack_use_after_return, ASan's default, each fiber that ends leaves
+its fake stack mapped, and a process that makes fibers as it goes grows
+without bound. The context left is `from`, and its flag is the one to test.
+
+diff --git a/include/boost/context/fiber_ucontext.hpp b/include/boost/context/fiber_ucontext.hpp
+index 1859c5a..c09d70f 100644
+--- a/include/boost/context/fiber_ucontext.hpp
++++ b/include/boost/context/fiber_ucontext.hpp
+@@ -152,7 +152,7 @@ struct BOOST_CONTEXT_DECL fiber_activation_record {
+         __splitstack_setcontext( sctx.segments_ctx);
+ #endif
+ #if defined(BOOST_USE_ASAN)
+-        if ( terminated) {
++        if ( from->terminated) {
+             __sanitizer_start_switch_fiber( nullptr, stack_bottom, stack_size);
+         } else {
+             __sanitizer_start_switch_fiber( & from->fake_stack, stack_bottom, stack_size);
