@@ -114,7 +114,7 @@
     },
     "slua": {
       "baseline": "0.732.16",
-      "port-version": 0
+      "port-version": 1
     },
     "tailslide": {
       "baseline": "1.5.15",
