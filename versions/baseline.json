@@ -54,7 +54,7 @@
     },
     "faudio": {
       "baseline": "26.10",
-      "port-version": 0
+      "port-version": 1
     },
     "libndofdev": {
       "baseline": "1.0.1",
