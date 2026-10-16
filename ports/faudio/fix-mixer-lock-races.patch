@@ -1,0 +1,119 @@
+Read what the mixer shares with the API under the locks that guard it
+
+Three things the mixer thread reads are written by the API's callers
+on their own threads, and ThreadSanitizer reports each in a viewer that
+plays sound:
+
+- A source voice's active flag. Start and Stop wrote it with no lock;
+  the mixer reads it under sourceLock, as GetPerformanceData does, so
+  Start and Stop now write it under sourceLock too. Operation sets run
+  them on the mixer thread holding operationLock alone, and nothing
+  takes sourceLock before operationLock, so the order is the one
+  already in use.
+
+- The master voice's volume. SetVolume writes it under volumeLock; the
+  mixer read it without, and now reads it once under volumeLock.
+
+- The queued buffers. Before OnVoiceProcessingPassStart, the mixer
+  counted the bytes they still hold without bufferLock, while
+  SubmitSourceBuffer may be growing the array under it on another
+  thread: a read of memory that array_reserve can free. The count is
+  now taken under bufferLock, before the locks are dropped for the
+  callback.
+
+diff --git a/src/FAudio.c b/src/FAudio.c
+index 9719f97..429f60c 100644
+--- a/src/FAudio.c
++++ b/src/FAudio.c
+@@ -2697,7 +2697,12 @@ uint32_t FAudioSourceVoice_Start(
+ 	FAudio_assert(voice->type == FAUDIO_VOICE_SOURCE);
+ 
+ 	FAudio_assert(Flags == 0);
++	/* The mixer reads this under sourceLock */
++	FAudio_PlatformLockMutex(voice->audio->sourceLock);
++	LOG_MUTEX_LOCK(voice->audio, voice->audio->sourceLock)
+ 	voice->src.active = 1;
++	FAudio_PlatformUnlockMutex(voice->audio->sourceLock);
++	LOG_MUTEX_UNLOCK(voice->audio, voice->audio->sourceLock)
+ 	LOG_API_EXIT(voice->audio)
+ 	return 0;
+ }
+@@ -2722,6 +2727,9 @@ uint32_t FAudioSourceVoice_Stop(
+ 
+ 	FAudio_assert(voice->type == FAUDIO_VOICE_SOURCE);
+ 
++	/* The mixer reads this under sourceLock */
++	FAudio_PlatformLockMutex(voice->audio->sourceLock);
++	LOG_MUTEX_LOCK(voice->audio, voice->audio->sourceLock)
+ 	if (Flags & FAUDIO_PLAY_TAILS)
+ 	{
+ 		voice->src.active = 2;
+@@ -2730,6 +2738,8 @@ uint32_t FAudioSourceVoice_Stop(
+ 	{
+ 		voice->src.active = 0;
+ 	}
++	FAudio_PlatformUnlockMutex(voice->audio->sourceLock);
++	LOG_MUTEX_UNLOCK(voice->audio, voice->audio->sourceLock)
+ 	LOG_API_EXIT(voice->audio)
+ 	return 0;
+ }
+diff --git a/src/FAudio_internal.c b/src/FAudio_internal.c
+index 20a5e8f..fdaec6b 100644
+--- a/src/FAudio_internal.c
++++ b/src/FAudio_internal.c
+@@ -1038,6 +1038,16 @@ static void FAudio_INTERNAL_MixSource(FAudioSourceVoice *voice)
+ 	if (	voice->src.callback != NULL &&
+ 		voice->src.callback->OnVoiceProcessingPassStart != NULL	)
+ 	{
++		/* The queued buffers are counted under bufferLock, which a
++		 * SubmitSourceBuffer on another thread holds to grow them.
++		 */
++		uint32_t bytesRequested;
++		FAudio_PlatformLockMutex(voice->src.bufferLock);
++		LOG_MUTEX_LOCK(voice->audio, voice->src.bufferLock)
++		bytesRequested = FAudio_INTERNAL_GetBytesRequested(voice, (uint32_t) toDecode);
++		FAudio_PlatformUnlockMutex(voice->src.bufferLock);
++		LOG_MUTEX_UNLOCK(voice->audio, voice->src.bufferLock)
++
+ 		FAudio_PlatformUnlockMutex(voice->sendLock);
+ 		LOG_MUTEX_UNLOCK(voice->audio, voice->sendLock)
+ 
+@@ -1046,7 +1056,7 @@ static void FAudio_INTERNAL_MixSource(FAudioSourceVoice *voice)
+ 
+ 		voice->src.callback->OnVoiceProcessingPassStart(
+ 			voice->src.callback,
+-			FAudio_INTERNAL_GetBytesRequested(voice, (uint32_t) toDecode)
++			bytesRequested
+ 		);
+ 
+ 		FAudio_PlatformLockMutex(voice->audio->sourceLock);
+@@ -1562,6 +1572,7 @@ static void FAudio_INTERNAL_FlushPendingBuffers(FAudioSourceVoice *voice)
+ static void FAUDIOCALL FAudio_INTERNAL_GenerateOutput(FAudio *audio, float *output)
+ {
+ 	uint32_t totalSamples;
++	float masterVolume;
+ 	LinkedList *list;
+ 	float *effectOut;
+ 	FAudioEngineCallback *callback;
+@@ -1647,13 +1658,18 @@ static void FAUDIOCALL FAudio_INTERNAL_GenerateOutput(FAudio *audio, float *outp
+ 	FAudio_PlatformUnlockMutex(audio->submixLock);
+ 	LOG_MUTEX_UNLOCK(audio, audio->submixLock)
+ 
+-	/* Apply master volume */
+-	if (audio->master->volume != 1.0f)
++	/* Apply master volume, which SetVolume writes under volumeLock */
++	FAudio_PlatformLockMutex(audio->master->volumeLock);
++	LOG_MUTEX_LOCK(audio, audio->master->volumeLock)
++	masterVolume = audio->master->volume;
++	FAudio_PlatformUnlockMutex(audio->master->volumeLock);
++	LOG_MUTEX_UNLOCK(audio, audio->master->volumeLock)
++	if (masterVolume != 1.0f)
+ 	{
+ 		FAudio_INTERNAL_Amplify(
+ 			audio->master->master.output,
+ 			audio->updateSize * audio->master->master.inputChannels,
+-			audio->master->volume
++			masterVolume
+ 		);
+ 	}
+ 

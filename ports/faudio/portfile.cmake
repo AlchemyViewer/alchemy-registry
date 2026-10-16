@@ -11,6 +11,9 @@ vcpkg_from_github(
         # Guard against uint64_t underflow in toDecode calculation when the
         # frequency ratio changes between mix calls.
         fix-todecode-underflow.patch
+        # Read the active flag, the master volume and the queued buffers
+        # under the locks the API writes them under.
+        fix-mixer-lock-races.patch
 )
 
 set(options "")
