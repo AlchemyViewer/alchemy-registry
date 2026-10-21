@@ -1,0 +1,789 @@
+diff --git a/demo/tests.cpp b/demo/tests.cpp
+index 9be331a..4775d17 100644
+--- a/demo/tests.cpp
++++ b/demo/tests.cpp
+@@ -3499,6 +3499,141 @@ static void tangentDegenerate()
+ 			assert(fabsf(tangents[i * 4 + k] - expected[i][k]) < 1e-3f);
+ }
+ 
++static void tangentCompatibleNonManifold()
++{
++	struct Vertex
++	{
++		float px, py, pz;
++		float nx, ny, nz;
++		float tx, ty;
++	};
++
++	const Vertex vertices[] = {
++	    {0, 0, 0, 0, 0, 1, 0, 0},
++	    {1, 0, 0, 0, 0, 1, 1, 0.5f},
++	    {0.5f, 1, 0, 0, 0, 1, 0, 1},
++	    {0.5f, 0.8f, 0, 0, 0, 1, -1, 0.2f},
++	    {0.5f, -1, 0, 0, 0, 1, 0.3f, -1},
++	};
++
++	const unsigned int indices[] = {
++	    // edge 0-1
++	    0, 1, 2,
++	    // edge 0-1 again, in the same direction
++	    0, 1, 3,
++	    // edge 1-0
++	    1, 0, 4 //
++	};
++
++	float tangents[9 * 4];
++	meshopt_generateTangents(tangents, indices, 9, &vertices[0].px, 5, sizeof(Vertex), &vertices[0].nx, sizeof(Vertex), &vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++
++	// like MikkTSpace, the reversed edge is paired with the first triangle only, so the second keeps its own tangents at 0 and 1
++	const float expected[9][4] = {
++	    {0.8850f, -0.4655f, 0.f, 1.f},  // 0
++	    {0.8850f, -0.4655f, 0.f, 1.f},  // 1
++	    {0.8321f, -0.5547f, 0.f, 1.f},  // 2
++	    {-0.1240f, -0.9923f, 0.f, 1.f}, // 0
++	    {-0.1240f, -0.9923f, 0.f, 1.f}, // 1
++	    {-0.1240f, -0.9923f, 0.f, 1.f}, // 3
++	    {0.8850f, -0.4655f, 0.f, 1.f},  // 1
++	    {0.8850f, -0.4655f, 0.f, 1.f},  // 0
++	    {0.9285f, -0.3714f, 0.f, 1.f},  // 4
++	};
++
++	for (size_t i = 0; i < 9; ++i)
++		for (size_t k = 0; k < 4; ++k)
++			assert(fabsf(tangents[i * 4 + k] - expected[i][k]) < 1e-3f);
++}
++
++static void tangentCompatibleCoincident()
++{
++	struct Vertex
++	{
++		float px, py, pz;
++		float nx, ny, nz;
++		float tx, ty;
++	};
++
++	// vertices 2 and 3 share a position but not UVs
++	const Vertex vertices[] = {
++	    {0, 0, 0, 0, 0, 1, 0, 0},
++	    {1, 0, 0, 0, 0, 1, 1, 0},
++	    {0.6f, 0.8f, 0, 0, 0, 1, 0.6f, 0.8f},
++	    {0.6f, 0.8f, 0, 0, 0, 1, 0.9f, 1.2f},
++	    {-0.5f, 0.9f, 0, 0, 0, 1, -0.2f, 1.4f},
++	};
++
++	const unsigned int indices[] = {
++	    0, 1, 2,
++	    // two corners at one position
++	    0, 2, 3,
++	    0, 3, 4 //
++	};
++
++	float tangents[9 * 4];
++	meshopt_generateTangents(tangents, indices, 9, &vertices[0].px, 5, sizeof(Vertex), &vertices[0].nx, sizeof(Vertex), &vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++
++	// like MikkTSpace, the middle triangle does not join the other two around 0, and its corners take the first other triangle's tangent at each vertex
++	const float vx = 0.9996f;
++	const float vy = 0.0278f;
++	const float expected[9][4] = {
++	    {1.f, 0.f, 0.f, 1.f}, // 0
++	    {1.f, 0.f, 0.f, 1.f}, // 1
++	    {1.f, 0.f, 0.f, 1.f}, // 2
++	    {1.f, 0.f, 0.f, 1.f}, // 0
++	    {1.f, 0.f, 0.f, 1.f}, // 2
++	    {vx, vy, 0.f, 1.f},   // 3
++	    {vx, vy, 0.f, 1.f},   // 0
++	    {vx, vy, 0.f, 1.f},   // 3
++	    {vx, vy, 0.f, 1.f},   // 4
++	};
++
++	for (size_t i = 0; i < 9; ++i)
++		for (size_t k = 0; k < 4; ++k)
++			assert(fabsf(tangents[i * 4 + k] - expected[i][k]) < 1e-3f);
++}
++
++static void tangentCompatibleOpposite()
++{
++	struct Vertex
++	{
++		float px, py, pz;
++		float nx, ny, nz;
++		float tx, ty;
++	};
++
++	// a strip folded back on itself: both triangles have the same UV orientation and exactly opposite tangents
++	const Vertex vertices[] = {
++	    {0, 0, 0, 0, 0, 1, 0, 0},
++	    {0, 1, 0, 0, 0, 1, 0, 1},
++	    {1, 0, 0, 0, 0, 1, -1, 0},
++	    {1, 0, 0.001f, 0, 0, 1, 1, 0},
++	};
++
++	const unsigned int indices[] = {
++	    0, 2, 1,
++	    0, 1, 3 //
++	};
++
++	float tangents[6 * 4];
++	meshopt_generateTangents(tangents, indices, 6, &vertices[0].px, 4, sizeof(Vertex), &vertices[0].nx, sizeof(Vertex), &vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++
++	// like MikkTSpace, triangles whose tangents are exactly opposite keep their own at the vertices they share
++	const float expected[6][4] = {
++	    {-1.f, 0.f, 0.f, -1.f}, // 0
++	    {-1.f, 0.f, 0.f, -1.f}, // 2
++	    {-1.f, 0.f, 0.f, -1.f}, // 1
++	    {1.f, 0.f, 0.f, -1.f},  // 0
++	    {1.f, 0.f, 0.f, -1.f},  // 1
++	    {1.f, 0.f, 0.f, -1.f},  // 3
++	};
++
++	for (size_t i = 0; i < 6; ++i)
++		for (size_t k = 0; k < 4; ++k)
++			assert(fabsf(tangents[i * 4 + k] - expected[i][k]) < 1e-3f);
++}
++
+ static void normalsBasic()
+ {
+ 	const float vertices[][3] = {
+@@ -3703,6 +3838,9 @@ void runTests()
+ 
+ 	tangentsBasic();
+ 	tangentDegenerate();
++	tangentCompatibleNonManifold();
++	tangentCompatibleCoincident();
++	tangentCompatibleOpposite();
+ 	normalsBasic();
+ 	normalsDegenerate();
+ }
+diff --git a/src/meshoptimizer.h b/src/meshoptimizer.h
+index ff69785..6b62c13 100644
+--- a/src/meshoptimizer.h
++++ b/src/meshoptimizer.h
+@@ -932,7 +932,7 @@ MESHOPTIMIZER_API size_t meshopt_opacityMapCompact(unsigned char* data, size_t d
+  */
+ enum
+ {
+-	/* Produce tangents compatible with MikkTSpace (same weighting and fallbacks) at the cost of reduced quality. Not recommended unless normal maps are baked. */
++	/* Produce tangents compatible with MikkTSpace (same grouping, weighting and fallbacks) at the cost of reduced quality. Not recommended unless normal maps are baked. */
+ 	meshopt_TangentCompatible = 1 << 0,
+ 	/* For vertices only connected to degenerate triangles, output zero tangents instead of an arbitrary fallback.  */
+ 	meshopt_TangentZeroFallback = 1 << 1,
+diff --git a/src/tangentspace.cpp b/src/tangentspace.cpp
+index f9a60e9..d5e661d 100644
+--- a/src/tangentspace.cpp
++++ b/src/tangentspace.cpp
+@@ -2,6 +2,7 @@
+ #include "meshoptimizer.h"
+ 
+ #include <assert.h>
++#include <float.h>
+ #include <math.h>
+ #include <string.h>
+ 
+@@ -65,6 +66,97 @@ static void computeFaceTangents(Tangent* result, size_t triangle_count, const un
+ 	}
+ }
+ 
++enum
++{
++	// two corners share a position; such triangles are left out of adjacency and take their tangents from other triangles
++	Face_Degenerate = 1 << 0,
++	// UV area and both derivative magnitudes are above FLT_MIN; only these triangles contribute to tangent sums
++	Face_Good = 1 << 1,
++	// UV area is positive; triangles that are not good take the orientation of the first group that reaches them
++	Face_Orient = 1 << 2,
++};
++
++// per-corner data for compatible mode: projected tangent (0-2), projected bitangent (3-5), angle between projected edges (6)
++const size_t kCornerData = 7;
++
++// normalizes the vector unless all of its components are within FLT_MIN of zero, in which case it is left as is
++static void normalizeNotZero(float* v)
++{
++	if (fabsf(v[0]) > FLT_MIN || fabsf(v[1]) > FLT_MIN || fabsf(v[2]) > FLT_MIN)
++	{
++		float s = 1.f / sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
++
++		v[0] *= s;
++		v[1] *= s;
++		v[2] *= s;
++	}
++}
++
++// computes normalized tangent (xyz) and bitangent (xyz) per triangle, using the same operations and thresholds as the MikkTSpace reference
++static void computeFaceTangentsCompatible(float* result, unsigned char* flags, size_t triangle_count, const unsigned int* indices, const float* vertex_positions, size_t vertex_positions_stride, const float* vertex_uvs, size_t vertex_uvs_stride)
++{
++	size_t vertex_position_stride_float = vertex_positions_stride / sizeof(float);
++	size_t vertex_uv_stride_float = vertex_uvs_stride / sizeof(float);
++
++	for (size_t i = 0; i < triangle_count; ++i)
++	{
++		unsigned int a = indices ? indices[i * 3 + 0] : unsigned(i * 3 + 0);
++		unsigned int b = indices ? indices[i * 3 + 1] : unsigned(i * 3 + 1);
++		unsigned int c = indices ? indices[i * 3 + 2] : unsigned(i * 3 + 2);
++
++		const float* pa = &vertex_positions[a * vertex_position_stride_float];
++		const float* pb = &vertex_positions[b * vertex_position_stride_float];
++		const float* pc = &vertex_positions[c * vertex_position_stride_float];
++
++		const float* ta = &vertex_uvs[a * vertex_uv_stride_float];
++		const float* tb = &vertex_uvs[b * vertex_uv_stride_float];
++		const float* tc = &vertex_uvs[c * vertex_uv_stride_float];
++
++		bool degenerate = (pa[0] == pb[0] && pa[1] == pb[1] && pa[2] == pb[2]) || (pa[0] == pc[0] && pa[1] == pc[1] && pa[2] == pc[2]) || (pb[0] == pc[0] && pb[1] == pc[1] && pb[2] == pc[2]);
++
++		float dp1x = pb[0] - pa[0], dp1y = pb[1] - pa[1], dp1z = pb[2] - pa[2];
++		float dp2x = pc[0] - pa[0], dp2y = pc[1] - pa[1], dp2z = pc[2] - pa[2];
++		float dt1x = tb[0] - ta[0], dt1y = tb[1] - ta[1];
++		float dt2x = tc[0] - ta[0], dt2y = tc[1] - ta[1];
++
++		float det = dt1x * dt2y - dt1y * dt2x;
++
++		// tangent and bitangent using chain rule, see eq. 42; the operations are ordered as in the reference so that the results match bit for bit
++		float sx = dt2y * dp1x - dt1y * dp2x, sy = dt2y * dp1y - dt1y * dp2y, sz = dt2y * dp1z - dt1y * dp2z;
++		float tx = -dt2x * dp1x + dt1x * dp2x, ty = -dt2x * dp1y + dt1x * dp2y, tz = -dt2x * dp1z + dt1x * dp2z;
++
++		float* r = &result[i * 6];
++		memset(r, 0, sizeof(float) * 6);
++
++		unsigned char flag = (degenerate ? Face_Degenerate : 0) | (det > 0.f ? Face_Orient : 0);
++
++		if (!degenerate && fabsf(det) > FLT_MIN)
++		{
++			float area = fabsf(det);
++			float sign = det > 0.f ? 1.f : -1.f;
++
++			float sl = sqrtf(sx * sx + sy * sy + sz * sz);
++			float tl = sqrtf(tx * tx + ty * ty + tz * tz);
++
++			if (sl > FLT_MIN)
++			{
++				float ss = sign / sl;
++				r[0] = ss * sx, r[1] = ss * sy, r[2] = ss * sz;
++			}
++
++			if (tl > FLT_MIN)
++			{
++				float ts = sign / tl;
++				r[3] = ts * tx, r[4] = ts * ty, r[5] = ts * tz;
++			}
++
++			flag |= (sl / area > FLT_MIN && tl / area > FLT_MIN) ? Face_Good : 0;
++		}
++
++		flags[i] = flag;
++	}
++}
++
+ struct Normal
+ {
+ 	float x, y, z;
+@@ -229,7 +321,8 @@ struct CornerAdjacency
+ 	unsigned int* data;
+ };
+ 
+-static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int* indices, size_t index_count, const unsigned int* remap, size_t vertex_count, meshopt_Allocator& allocator)
++// face_flags may be NULL; otherwise, corners of triangles marked degenerate are left out
++static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int* indices, size_t index_count, const unsigned int* remap, size_t vertex_count, const unsigned char* face_flags, meshopt_Allocator& allocator)
+ {
+ 	adjacency.offsets = allocator.allocate<unsigned int>(vertex_count + 1);
+ 	adjacency.data = allocator.allocate<unsigned int>(index_count);
+@@ -242,6 +335,9 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
+ 
+ 	for (size_t i = 0; i < index_count; ++i)
+ 	{
++		if (face_flags && (face_flags[i / 3] & Face_Degenerate))
++			continue;
++
+ 		unsigned int v = indices ? remap[indices[i]] : remap[i];
+ 		assert(v < vertex_count);
+ 
+@@ -258,11 +354,14 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
+ 		offset += count;
+ 	}
+ 
+-	assert(offset == index_count);
++	assert(offset <= index_count);
+ 
+ 	// fill corner data
+ 	for (size_t i = 0; i < face_count; ++i)
+ 	{
++		if (face_flags && (face_flags[i] & Face_Degenerate))
++			continue;
++
+ 		unsigned int a = indices ? remap[indices[i * 3 + 0]] : remap[i * 3 + 0];
+ 		unsigned int b = indices ? remap[indices[i * 3 + 1]] : remap[i * 3 + 1];
+ 		unsigned int c = indices ? remap[indices[i * 3 + 2]] : remap[i * 3 + 2];
+@@ -275,7 +374,7 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
+ 
+ 	// finalize offsets
+ 	adjacency.offsets[0] = 0;
+-	assert(adjacency.offsets[vertex_count] == index_count);
++	assert(adjacency.offsets[vertex_count] == offset);
+ }
+ 
+ static unsigned int follow2(unsigned int* parents, unsigned int index)
+@@ -393,7 +492,7 @@ inline float optacos(float x)
+ 	return x < 0.f ? 3.1415926f - r : r;
+ }
+ 
+-static void accumulateTangents(float* result, const unsigned int* groups, const unsigned int* indices, size_t index_count, const Tangent* face_tangents, const float* vertex_positions, size_t vertex_positions_stride, const float* vertex_normals, size_t vertex_normals_stride, unsigned int options)
++static void accumulateTangents(float* result, const unsigned int* groups, const unsigned int* indices, size_t index_count, const Tangent* face_tangents, const float* vertex_positions, size_t vertex_positions_stride, const float* vertex_normals, size_t vertex_normals_stride)
+ {
+ 	static const int next[4] = {1, 2, 0, 1};
+ 
+@@ -450,8 +549,7 @@ static void accumulateTangents(float* result, const unsigned int* groups, const
+ 			float w = angle * (sl == 0.f ? 0.f : 1.f / sl);
+ 
+ 			// weight larger adjacent triangles more to reduce interpolation artifacts from slivers; this deviates from reference implementation for higher quality
+-			if ((options & meshopt_TangentCompatible) == 0)
+-				w *= dpl;
++			w *= dpl;
+ 
+ 			r[0] += sx * w;
+ 			r[1] += sy * w;
+@@ -460,6 +558,404 @@ static void accumulateTangents(float* result, const unsigned int* groups, const
+ 	}
+ }
+ 
++// pairs edges around vertex v with their reversed twins; each edge is paired at most once, with the first unpaired reversed edge of a later triangle,
++// which matches the reference on edges shared by more than two triangles; edges are numbered triangle * 3 + k, edge k running from corner k to the next
++static void pairEdgesCompatible(unsigned int* neighbors, unsigned int* around, const unsigned int* data, size_t count, unsigned int v, const unsigned int* indices, const unsigned int* remap)
++{
++	static const int next[4] = {1, 2, 0, 1};
++
++	// vertices that follow and precede v in each triangle
++	for (size_t i = 0; i < count; ++i)
++	{
++		unsigned int ti = data[i] >> 2;
++		unsigned int cib = ti * 3 + next[(data[i] & 3) + 0];
++		unsigned int cic = ti * 3 + next[(data[i] & 3) + 1];
++
++		around[i * 2 + 0] = indices ? remap[indices[cib]] : remap[cib];
++		around[i * 2 + 1] = indices ? remap[indices[cic]] : remap[cic];
++	}
++
++	for (size_t i = 0; i < count; ++i)
++	{
++		unsigned int ti = data[i] >> 2;
++		unsigned int nib = around[i * 2 + 0], nic = around[i * 2 + 1];
++
++		// edge v->nib starts at this corner and edge nic->v ends at it; each edge is paired at its lower vertex, so it is only considered once
++		unsigned int ei = ti * 3 + (data[i] & 3);
++		unsigned int ec = ti * 3 + next[(data[i] & 3) + 1];
++
++		bool pi = nib > v && neighbors[ei] == ~0u;
++		bool pc = nic > v && neighbors[ec] == ~0u;
++
++		for (size_t j = i + 1; j < count && (pi || pc); ++j)
++		{
++			unsigned int tj = data[j] >> 2;
++			unsigned int njb = around[j * 2 + 0], njc = around[j * 2 + 1];
++
++			// v->nib is reversed by njc->v
++			unsigned int ej = tj * 3 + next[(data[j] & 3) + 1];
++
++			if (pi && njc == nib && neighbors[ej] == ~0u)
++			{
++				neighbors[ei] = ej;
++				neighbors[ej] = ei;
++				pi = false;
++			}
++
++			// nic->v is reversed by v->njb
++			ej = tj * 3 + (data[j] & 3);
++
++			if (pc && njb == nic && neighbors[ej] == ~0u)
++			{
++				neighbors[ec] = ej;
++				neighbors[ej] = ec;
++				pc = false;
++			}
++		}
++	}
++}
++
++// groups corners around each vertex by flood fill across paired edges between triangles of one orientation, visiting group seeds in the reference's order;
++// triangles that are not good take the orientation of the first group to reach any of their corners
++static void buildTangentGroupsCompatible(unsigned int* groups, unsigned char* flags, unsigned int* stack, const unsigned int* neighbors, size_t face_count)
++{
++	static const int next[4] = {1, 2, 0, 1};
++
++	for (size_t i = 0; i < face_count; ++i)
++	{
++		if ((flags[i] & (Face_Degenerate | Face_Good)) != Face_Good)
++			continue;
++
++		for (int k = 0; k < 3; ++k)
++		{
++			unsigned int root = unsigned(i * 3 + k);
++
++			if (groups[root] != ~0u)
++				continue;
++
++			unsigned char orient = flags[i] & Face_Orient;
++
++			groups[root] = root;
++
++			size_t stack_size = 0;
++			stack[stack_size++] = root;
++
++			while (stack_size)
++			{
++				unsigned int corner = stack[--stack_size];
++				unsigned int t = corner / 3;
++
++				// the edge leaving this corner is paired with one entering the vertex in the adjacent triangle, which ends at that triangle's corner here;
++				// the edge entering this corner is paired with one leaving the vertex, which starts there
++				unsigned int eo = neighbors[corner];
++				unsigned int ei = neighbors[t * 3 + next[corner % 3 + 1]];
++
++				unsigned int adjacent[2] = {eo == ~0u ? ~0u : (eo / 3) * 3 + next[eo % 3], ei};
++
++				for (int e = 0; e < 2; ++e)
++				{
++					unsigned int cn = adjacent[e];
++
++					if (cn == ~0u || groups[cn] != ~0u)
++						continue;
++
++					unsigned int n = cn / 3;
++
++					if ((flags[n] & Face_Good) == 0 && groups[n * 3 + 0] == ~0u && groups[n * 3 + 1] == ~0u && groups[n * 3 + 2] == ~0u)
++						flags[n] = (unsigned char)((flags[n] & ~Face_Orient) | orient);
++
++					if ((flags[n] & Face_Orient) != orient)
++						continue;
++
++					groups[cn] = root;
++					stack[stack_size++] = cn;
++				}
++			}
++		}
++	}
++}
++
++// computes the projected tangent and bitangent of each good triangle at each of its corners, and the angle between its projected edges there,
++// and adds the angle-weighted tangent to its group's sum; triangles are visited in order, so each group sums them in the same order as the reference
++static void accumulateTangentsCompatible(float* result, float* corner_data, const unsigned int* groups, const unsigned char* flags, const float* face_tangents, size_t face_count, const unsigned int* indices, const float* vertex_positions, size_t vertex_positions_stride, const float* vertex_normals, size_t vertex_normals_stride)
++{
++	static const int next[4] = {1, 2, 0, 1};
++
++	size_t vertex_position_stride_float = vertex_positions_stride / sizeof(float);
++	size_t vertex_normal_stride_float = vertex_normals_stride / sizeof(float);
++
++	for (size_t i = 0; i < face_count; ++i)
++	{
++		if ((flags[i] & (Face_Degenerate | Face_Good)) != Face_Good)
++			continue;
++
++		const float* ft = &face_tangents[i * 6];
++
++		for (int k = 0; k < 3; ++k)
++		{
++			unsigned int a = indices ? indices[i * 3 + k] : unsigned(i * 3 + k);
++			unsigned int b = indices ? indices[i * 3 + next[k]] : unsigned(i * 3 + next[k]);
++			unsigned int c = indices ? indices[i * 3 + next[k + 1]] : unsigned(i * 3 + next[k + 1]);
++
++			const float* n = vertex_normals + a * vertex_normal_stride_float;
++			float* s = &corner_data[(i * 3 + k) * kCornerData];
++
++			const float* pa = vertex_positions + a * vertex_position_stride_float;
++			const float* pb = vertex_positions + b * vertex_position_stride_float;
++			const float* pc = vertex_positions + c * vertex_position_stride_float;
++
++			// tangent, bitangent and the two edges at this corner, one per lane, projected onto the vertex normal and normalized
++			float vx[4] = {ft[0], ft[3], pc[0] - pa[0], pb[0] - pa[0]};
++			float vy[4] = {ft[1], ft[4], pc[1] - pa[1], pb[1] - pa[1]};
++			float vz[4] = {ft[2], ft[5], pc[2] - pa[2], pb[2] - pa[2]};
++
++			for (int l = 0; l < 4; ++l)
++			{
++				float d = n[0] * vx[l] + n[1] * vy[l] + n[2] * vz[l];
++
++				vx[l] = vx[l] - d * n[0];
++				vy[l] = vy[l] - d * n[1];
++				vz[l] = vz[l] - d * n[2];
++			}
++
++			// vectors with every component within FLT_MIN of zero are left as they are
++			float scale[4];
++
++			for (int l = 0; l < 4; ++l)
++				scale[l] = 1.f / sqrtf(vx[l] * vx[l] + vy[l] * vy[l] + vz[l] * vz[l]);
++
++			for (int l = 0; l < 4; ++l)
++				if (fabsf(vx[l]) > FLT_MIN || fabsf(vy[l]) > FLT_MIN || fabsf(vz[l]) > FLT_MIN)
++				{
++					vx[l] *= scale[l];
++					vy[l] *= scale[l];
++					vz[l] *= scale[l];
++				}
++
++			s[0] = vx[0], s[1] = vy[0], s[2] = vz[0];
++			s[3] = vx[1], s[4] = vy[1], s[5] = vz[1];
++
++			float cosa = vx[2] * vx[3] + vy[2] * vy[3] + vz[2] * vz[3];
++			cosa = cosa > 1.f ? 1.f : (cosa < -1.f ? -1.f : cosa);
++
++			// the reference computes the angle in double precision
++			s[6] = float(acos(double(cosa)));
++
++			// every corner of a good triangle belongs to a group
++			float* r = &result[size_t(groups[i * 3 + k]) * 4];
++
++			r[0] += s[6] * s[0];
++			r[1] += s[6] * s[1];
++			r[2] += s[6] * s[2];
++		}
++	}
++}
++
++// the reference leaves out of a good triangle's sum the good triangles of its group whose projected tangent or bitangent is exactly opposite to its own;
++// for such triangles around vertex v, sums the rest of their group in triangle order into their projected tangent, normalized, and lists their corners
++static size_t splitTangentGroupsCompatible(unsigned int* split, size_t split_count, float* corner_data, unsigned int* local, float* sums, const unsigned int* groups, const unsigned char* flags, const unsigned int* data, size_t count)
++{
++	// the reference splits groups where vectors are no closer than its angular threshold; its default of 180 degrees rounds to a cosine of -1
++	const float threshold = -1.f;
++
++	// corners of good triangles around this vertex: corner, group, and whether it leaves part of its group out
++	size_t good = 0;
++
++	for (size_t i = 0; i < count; ++i)
++	{
++		unsigned int corner = (data[i] >> 2) * 3 + (data[i] & 3);
++
++		if (flags[data[i] >> 2] & Face_Good)
++		{
++			local[good * 3 + 0] = corner;
++			local[good * 3 + 1] = groups[corner];
++			local[good * 3 + 2] = 0;
++			good++;
++		}
++	}
++
++	bool any = false;
++
++	for (size_t i = 1; i < good; ++i)
++	{
++		const float* si = &corner_data[local[i * 3] * kCornerData];
++
++		for (size_t j = 0; j < i; ++j)
++		{
++			if (local[j * 3 + 1] != local[i * 3 + 1])
++				continue;
++
++			const float* sj = &corner_data[local[j * 3] * kCornerData];
++
++			float coss = si[0] * sj[0] + si[1] * sj[1] + si[2] * sj[2];
++			float cost = si[3] * sj[3] + si[4] * sj[4] + si[5] * sj[5];
++
++			if (!(coss > threshold && cost > threshold))
++			{
++				local[i * 3 + 2] = local[j * 3 + 2] = 1;
++				any = true;
++			}
++		}
++	}
++
++	if (!any)
++		return split_count;
++
++	for (size_t i = 0; i < good; ++i)
++	{
++		if (!local[i * 3 + 2])
++			continue;
++
++		const float* si = &corner_data[local[i * 3] * kCornerData];
++		float* r = &sums[i * 3];
++
++		r[0] = r[1] = r[2] = 0.f;
++
++		for (size_t j = 0; j < good; ++j)
++		{
++			if (local[j * 3 + 1] != local[i * 3 + 1])
++				continue;
++
++			const float* sj = &corner_data[local[j * 3] * kCornerData];
++
++			float coss = si[0] * sj[0] + si[1] * sj[1] + si[2] * sj[2];
++			float cost = si[3] * sj[3] + si[4] * sj[4] + si[5] * sj[5];
++
++			if (i == j || (coss > threshold && cost > threshold))
++			{
++				r[0] += sj[6] * sj[0];
++				r[1] += sj[6] * sj[1];
++				r[2] += sj[6] * sj[2];
++			}
++		}
++
++		normalizeNotZero(r);
++	}
++
++	// the projected tangents of this vertex are only read above, so they can take the sums now
++	for (size_t i = 0; i < good; ++i)
++		if (local[i * 3 + 2])
++		{
++			memcpy(&corner_data[local[i * 3] * kCornerData], &sums[i * 3], sizeof(float) * 3);
++			split[split_count++] = local[i * 3];
++		}
++
++	return split_count;
++}
++
++static void generateTangentsCompatible(float* result, const unsigned int* indices, size_t index_count, const float* vertex_positions, size_t vertex_count, size_t vertex_positions_stride, const float* vertex_normals, size_t vertex_normals_stride, const float* vertex_uvs, size_t vertex_uvs_stride, unsigned int options, meshopt_Allocator& allocator)
++{
++	size_t face_count = index_count / 3;
++
++	// compute vertex remap to unique vertex index
++	unsigned int* remap = allocator.allocate<unsigned int>(vertex_count);
++	buildVertexRemap<false>(remap, vertex_count, vertex_positions, vertex_positions_stride, vertex_normals, vertex_normals_stride, vertex_uvs, vertex_uvs_stride, allocator);
++
++	// compute per-triangle tangents and bitangents
++	float* face_tangents = allocator.allocate<float>(face_count * 6);
++	unsigned char* flags = allocator.allocate<unsigned char>(face_count);
++	computeFaceTangentsCompatible(face_tangents, flags, face_count, indices, vertex_positions, vertex_positions_stride, vertex_uvs, vertex_uvs_stride);
++
++	// build adjacency information without degenerate triangles
++	CornerAdjacency adjacency = {};
++	buildCornerAdjacency(adjacency, indices, index_count, remap, vertex_count, flags, allocator);
++
++	size_t max_count = 0;
++
++	for (size_t i = 0; i < vertex_count; ++i)
++	{
++		size_t count = adjacency.offsets[i + 1] - adjacency.offsets[i];
++		max_count = count > max_count ? count : max_count;
++	}
++
++	// per-vertex scratch, for edge pairing (two per corner) and group splits (three per corner, and a sum)
++	unsigned int* local = allocator.allocate<unsigned int>(max_count * 3);
++	float* sums = allocator.allocate<float>(max_count * 3);
++
++	// pair each edge with at most one reversed edge
++	unsigned int* neighbors = allocator.allocate<unsigned int>(index_count);
++	memset(neighbors, -1, index_count * sizeof(unsigned int));
++
++	for (size_t i = 0; i < vertex_count; ++i)
++		if (adjacency.offsets[i + 1] - adjacency.offsets[i] > 1)
++			pairEdgesCompatible(neighbors, local, adjacency.data + adjacency.offsets[i], adjacency.offsets[i + 1] - adjacency.offsets[i], unsigned(i), indices, remap);
++
++	// compute per-corner tangent groups
++	unsigned int* groups = allocator.allocate<unsigned int>(index_count);
++	memset(groups, -1, index_count * sizeof(unsigned int));
++
++	unsigned int* stack = allocator.allocate<unsigned int>(face_count);
++	buildTangentGroupsCompatible(groups, flags, stack, neighbors, face_count);
++
++	// accumulate tangents into their groups
++	float* corner_data = allocator.allocate<float>(index_count * kCornerData);
++
++	memset(result, 0, index_count * sizeof(float) * 4);
++	accumulateTangentsCompatible(result, corner_data, groups, flags, face_tangents, face_count, indices, vertex_positions, vertex_positions_stride, vertex_normals, vertex_normals_stride);
++
++	// find corners whose triangles leave part of their group out; the neighbors array is no longer needed and lists them
++	unsigned int* split = neighbors;
++	size_t split_count = 0;
++
++	for (size_t i = 0; i < vertex_count; ++i)
++		if (adjacency.offsets[i + 1] - adjacency.offsets[i] > 1)
++			split_count = splitTangentGroupsCompatible(split, split_count, corner_data, local, sums, groups, flags, adjacency.data + adjacency.offsets[i], adjacency.offsets[i + 1] - adjacency.offsets[i]);
++
++	// finalize tangent vectors by normalizing roots and propagating the rest; corners of triangles that no group reached get the fallback
++	float fallback = (options & meshopt_TangentZeroFallback) ? 0.f : 1.f;
++
++	for (size_t i = 0; i < index_count; ++i)
++		if (groups[i] == i)
++			normalizeNotZero(&result[i * 4]);
++
++	for (size_t i = 0; i < index_count; ++i)
++	{
++		if (flags[i / 3] & Face_Degenerate)
++			continue;
++
++		float* r = &result[i * 4];
++
++		if (groups[i] == ~0u)
++		{
++			r[0] = fallback, r[1] = 0.f, r[2] = 0.f, r[3] = -1.f;
++			continue;
++		}
++
++		if (groups[i] != i)
++			memcpy(r, &result[size_t(groups[i]) * 4], sizeof(float) * 3);
++
++		r[3] = (flags[i / 3] & Face_Orient) ? 1.f : -1.f;
++	}
++
++	// corners whose triangles leave part of their group out are written last, as one of them may be the group root
++	for (size_t i = 0; i < split_count; ++i)
++		memcpy(&result[size_t(split[i]) * 4], &corner_data[size_t(split[i]) * kCornerData], sizeof(float) * 3);
++
++	// corners of degenerate triangles copy the tangent of the first corner of a triangle that is not degenerate at the same vertex
++	for (size_t i = 0; i < face_count; ++i)
++	{
++		if ((flags[i] & Face_Degenerate) == 0)
++			continue;
++
++		for (int k = 0; k < 3; ++k)
++		{
++			unsigned int v = indices ? remap[indices[i * 3 + k]] : remap[i * 3 + k];
++			float* r = &result[(i * 3 + k) * 4];
++
++			if (adjacency.offsets[v + 1] != adjacency.offsets[v])
++			{
++				unsigned int first = adjacency.data[adjacency.offsets[v]];
++
++				memcpy(r, &result[((first >> 2) * 3 + (first & 3)) * 4], sizeof(float) * 4);
++			}
++			else
++			{
++				r[0] = fallback, r[1] = 0.f, r[2] = 0.f, r[3] = -1.f;
++			}
++		}
++	}
++}
++
+ static void accumulateNormals(float* result, const unsigned int* groups, const unsigned int* indices, size_t index_count, const Normal* face_normals, const float* vertex_positions, size_t vertex_positions_stride)
+ {
+ 	static const int next[4] = {1, 2, 0, 1};
+@@ -580,6 +1076,13 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+ 
+ 	meshopt_Allocator allocator;
+ 
++	// compatible mode follows the reference implementation's grouping rules, which differ from the rules below on non-manifold edges and degenerate triangles
++	if (options & meshopt_TangentCompatible)
++	{
++		generateTangentsCompatible(result, indices, index_count, vertex_positions, vertex_count, vertex_positions_stride, vertex_normals, vertex_normals_stride, vertex_uvs, vertex_uvs_stride, options, allocator);
++		return;
++	}
++
+ 	size_t face_count = index_count / 3;
+ 
+ 	// compute vertex remap to unique vertex index
+@@ -588,7 +1091,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+ 
+ 	// build adjacency information
+ 	CornerAdjacency adjacency = {};
+-	buildCornerAdjacency(adjacency, indices, index_count, remap, vertex_count, allocator);
++	buildCornerAdjacency(adjacency, indices, index_count, remap, vertex_count, NULL, allocator);
+ 
+ 	// compute per-triangle tangents
+ 	Tangent* face_tangents = allocator.allocate<Tangent>(face_count);
+@@ -618,7 +1121,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+ 
+ 	// accumulate tangents into their own respective groups
+ 	memset(result, 0, index_count * sizeof(float) * 4);
+-	accumulateTangents(result, groups, indices, index_count, face_tangents, vertex_positions, vertex_positions_stride, vertex_normals, vertex_normals_stride, options);
++	accumulateTangents(result, groups, indices, index_count, face_tangents, vertex_positions, vertex_positions_stride, vertex_normals, vertex_normals_stride);
+ 
+ 	// finalize tangent signs for each face using facegroups
+ 	for (size_t i = 0; i < face_count; ++i)
+@@ -672,7 +1175,7 @@ void meshopt_generateNormals(float* result, const unsigned int* indices, size_t
+ 
+ 	// build adjacency information
+ 	CornerAdjacency adjacency = {};
+-	buildCornerAdjacency(adjacency, indices, index_count, remap, vertex_count, allocator);
++	buildCornerAdjacency(adjacency, indices, index_count, remap, vertex_count, NULL, allocator);
+ 
+ 	// compute per-triangle normals
+ 	Normal* face_normals = allocator.allocate<Normal>(face_count);
