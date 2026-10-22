@@ -197,7 +197,7 @@ diff -urN a/src/lib/openjp2/j2k.c b/src/lib/openjp2/j2k.c
      for (;;) {
          /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
          if (opj_stream_read_data(p_stream,
-@@ -6770,6 +6870,198 @@
+@@ -6770,6 +6870,30 @@
      }
  }
  
@@ -225,178 +225,10 @@ diff -urN a/src/lib/openjp2/j2k.c b/src/lib/openjp2/j2k.c
 +    return OPJ_TRUE;
 +}
 +
-+/* Alchemy: standalone codestream walker that returns the byte offsets at
-+ * which each tile-part ends (= where the next SOT marker, or the EOC,
-+ * begins), relative to the start of the codestream.
-+ *
-+ * Designed for byte-budget seeding in partial-fetch consumers: given a
-+ * raw J2K byte buffer (which may itself be truncated), walk SOC + main
-+ * header markers to the first SOT, then walk subsequent SOT segments
-+ * using each one's Psot length to record tile-part boundaries.
-+ *
-+ * Tolerant of truncated buffers: when a SOT declares a Psot whose end
-+ * extends past the available data, the declared end is still recorded
-+ * (callers use it as "wait for at least this many bytes") but no further
-+ * SOTs are walked.
-+ *
-+ * `out_complete` reports whether the walked list represents the entire
-+ * codestream. Evidence in descending confidence:
-+ *   1. A walked SOT with Psot=0 (J2K-spec sentinel for "last tile-part").
-+ *   2. The first SOT's TNsot (number of tile-parts for this tile) is
-+ *      non-zero and equals the walked count, with every walked
-+ *      tile-part fully present in the buffer.
-+ *   3. The bytes immediately after the last walked tile-part are an
-+ *      EOC marker (0xFF 0xD9).
-+ *
-+ * Returns OPJ_FALSE on a malformed main header or when no SOT is found.
-+ * On OPJ_FALSE, *out_num_ends is set to 0 and *out_complete to OPJ_FALSE.
-+ */
-+OPJ_API OPJ_BOOL OPJ_CALLCONV opj_j2k_walk_tile_part_ends(
-+    const OPJ_BYTE *data,
-+    OPJ_SIZE_T size,
-+    OPJ_SIZE_T *out_ends,
-+    OPJ_UINT32 *out_num_ends,
-+    OPJ_UINT32 max_ends,
-+    OPJ_BOOL *out_complete)
-+{
-+    OPJ_SIZE_T pos;
-+    OPJ_UINT32 num_ends = 0;
-+    OPJ_BOOL saw_psot_zero = OPJ_FALSE;
-+    OPJ_BOOL last_tp_fully_present = OPJ_FALSE;
-+    OPJ_UINT32 first_tnsot = 0;
-+    OPJ_BOOL have_first_tnsot = OPJ_FALSE;
-+
-+    if (out_num_ends) {
-+        *out_num_ends = 0;
-+    }
-+    if (out_complete) {
-+        *out_complete = OPJ_FALSE;
-+    }
-+    if (!data || !out_ends || !out_num_ends || !out_complete || max_ends == 0) {
-+        return OPJ_FALSE;
-+    }
-+    if (size < 6) {
-+        return OPJ_FALSE;
-+    }
-+
-+    /* SOC marker is FF 4F. */
-+    if (data[0] != 0xFF || data[1] != 0x4F) {
-+        return OPJ_FALSE;
-+    }
-+    pos = 2;
-+
-+    /* Skip main-header marker segments until we land on SOT (FF 90). Each
-+     * marker segment after the marker ID starts with a 2-byte big-endian
-+     * Lseg field; Lseg counts itself but not the 2-byte marker ID, so the
-+     * next marker is at pos + 2 + Lseg. */
-+    while (pos + 4 <= size) {
-+        OPJ_UINT32 seg_length = 0;
-+        OPJ_SIZE_T next_pos;
-+        OPJ_BYTE marker_low;
-+
-+        if (data[pos] != 0xFF) {
-+            return OPJ_FALSE;
-+        }
-+        marker_low = data[pos + 1];
-+
-+        if (marker_low == 0x90) { /* SOT */
-+            break;
-+        }
-+        if (marker_low == 0xD9) { /* EOC -- shouldn't appear in main header */
-+            return OPJ_FALSE;
-+        }
-+        if (marker_low == 0x4F || marker_low == 0x91 || marker_low == 0x92) {
-+            /* SOC / SOP / EPH have no Lseg and shouldn't appear here. */
-+            return OPJ_FALSE;
-+        }
-+
-+        opj_read_bytes((OPJ_BYTE *)(data + pos + 2), &seg_length, 2);
-+        if (seg_length < 2) {
-+            return OPJ_FALSE;
-+        }
-+        next_pos = pos + 2 + (OPJ_SIZE_T)seg_length;
-+        if (next_pos <= pos || next_pos > size) {
-+            return OPJ_FALSE;
-+        }
-+        pos = next_pos;
-+    }
-+    if (pos + 12 > size) {
-+        /* Need at least one full SOT segment (FF 90 + Lsot=10 + 10 bytes). */
-+        return OPJ_FALSE;
-+    }
-+
-+    /* Walk SOT markers. A SOT segment is exactly 12 bytes. Psot is the
-+     * tile-part length from the first byte of the SOT to the first byte
-+     * of the next SOT (or EOC for the last tile-part). Psot=0 is the
-+     * legal "extends to EOC" sentinel. TNsot (last byte) is the total
-+     * tile-part count for this tile, or 0 if unknown. */
-+    while (pos + 12 <= size && num_ends < max_ends) {
-+        OPJ_UINT32 psot = 0;
-+        OPJ_UINT32 tnsot;
-+        OPJ_SIZE_T tile_part_end;
-+
-+        if (data[pos] != 0xFF || data[pos + 1] != 0x90) {
-+            break;
-+        }
-+
-+        opj_read_bytes((OPJ_BYTE *)(data + pos + 6), &psot, 4);
-+        tnsot = data[pos + 11];
-+
-+        if (!have_first_tnsot) {
-+            first_tnsot = tnsot;
-+            have_first_tnsot = OPJ_TRUE;
-+        }
-+
-+        if (psot == 0) {
-+            /* Extends to EOC -- use buffer end as the best cutoff. */
-+            tile_part_end = size;
-+            saw_psot_zero = OPJ_TRUE;
-+        } else {
-+            tile_part_end = pos + (OPJ_SIZE_T)psot;
-+        }
-+        if (tile_part_end <= pos || tile_part_end > 0x7FFFFFFFu) {
-+            break;
-+        }
-+
-+        out_ends[num_ends++] = tile_part_end;
-+        last_tp_fully_present = (tile_part_end <= size) ? OPJ_TRUE : OPJ_FALSE;
-+
-+        if (psot == 0 || tile_part_end > size) {
-+            /* Definitively the last tile-part, or the declared end
-+             * extends past available bytes -- no more SOTs to walk. */
-+            break;
-+        }
-+        pos = tile_part_end;
-+    }
-+
-+    if (num_ends == 0) {
-+        return OPJ_FALSE;
-+    }
-+
-+    /* Completeness assessment. */
-+    if (saw_psot_zero) {
-+        *out_complete = OPJ_TRUE;
-+    } else if (have_first_tnsot && first_tnsot != 0
-+               && num_ends == first_tnsot
-+               && last_tp_fully_present) {
-+        *out_complete = OPJ_TRUE;
-+    } else if (last_tp_fully_present) {
-+        OPJ_SIZE_T end_off = out_ends[num_ends - 1];
-+        if (end_off + 2 <= size
-+                && data[end_off]     == 0xFF
-+                && data[end_off + 1] == 0xD9) {
-+            *out_complete = OPJ_TRUE;
-+        }
-+    }
-+
-+    *out_num_ends = num_ends;
-+    return OPJ_TRUE;
-+}
-+
  OPJ_BOOL opj_j2k_set_threads(opj_j2k_t *j2k, OPJ_UINT32 num_threads)
  {
      /* Currently we pass the thread-pool to the tcd, so we cannot re-set it */
-@@ -6829,6 +7121,13 @@
+@@ -6829,6 +6953,13 @@
      l_j2k->m_is_decoder = 0;
      l_j2k->m_cp.m_is_decoder = 0;
  
@@ -410,7 +242,7 @@ diff -urN a/src/lib/openjp2/j2k.c b/src/lib/openjp2/j2k.c
      l_j2k->m_specific_param.m_encoder.m_header_tile_data = (OPJ_BYTE *) opj_malloc(
                  OPJ_J2K_DEFAULT_HEADER_SIZE);
      if (! l_j2k->m_specific_param.m_encoder.m_header_tile_data) {
-@@ -9774,8 +10073,15 @@
+@@ -9774,8 +9905,15 @@
              /* Try to read 2 bytes (the marker size) from stream and copy them into the buffer */
              if (opj_stream_read_data(p_stream,
                                       p_j2k->m_specific_param.m_decoder.m_header_data, 2, p_manager) != 2) {
@@ -428,7 +260,7 @@ diff -urN a/src/lib/openjp2/j2k.c b/src/lib/openjp2/j2k.c
              }
  
              /* Read 2 bytes from the buffer as the marker size */
-@@ -9845,8 +10151,13 @@
+@@ -9845,8 +9983,13 @@
              if (opj_stream_read_data(p_stream,
                                       p_j2k->m_specific_param.m_decoder.m_header_data, l_marker_size,
                                       p_manager) != l_marker_size) {
@@ -444,7 +276,7 @@ diff -urN a/src/lib/openjp2/j2k.c b/src/lib/openjp2/j2k.c
              }
  
              if (!l_marker_handler->handler) {
-@@ -9893,8 +10204,13 @@
+@@ -9893,8 +10036,13 @@
                  /* Try to read 2 bytes (the next marker ID) from stream and copy them into the buffer*/
                  if (opj_stream_read_data(p_stream,
                                           p_j2k->m_specific_param.m_decoder.m_header_data, 2, p_manager) != 2) {
@@ -460,7 +292,7 @@ diff -urN a/src/lib/openjp2/j2k.c b/src/lib/openjp2/j2k.c
                  }
                  /* Read 2 bytes from the buffer as the new marker ID */
                  opj_read_bytes(p_j2k->m_specific_param.m_decoder.m_header_data,
-@@ -10039,8 +10355,17 @@
+@@ -10039,8 +10187,17 @@
                      }
                  }
  
@@ -572,7 +404,7 @@ diff -urN a/src/lib/openjp2/openjpeg.c b/src/lib/openjp2/openjpeg.c
 diff -urN a/src/lib/openjp2/openjpeg.h b/src/lib/openjp2/openjpeg.h
 --- a/src/lib/openjp2/openjpeg.h	2026-05-18 08:22:15.771719672 -0400
 +++ b/src/lib/openjp2/openjpeg.h	2026-05-18 08:24:15.283938888 -0400
-@@ -1764,6 +1764,71 @@
+@@ -1764,6 +1764,30 @@
          OPJ_INT32 * p_dc_shift,
          OPJ_UINT32 pNbComp);
  
@@ -599,47 +431,6 @@ diff -urN a/src/lib/openjp2/openjpeg.h b/src/lib/openjp2/openjpeg.h
 +OPJ_API OPJ_BOOL OPJ_CALLCONV opj_set_component_weights(opj_codec_t *p_codec,
 +        OPJ_UINT32 num_comps,
 +        const OPJ_FLOAT32 *weights);
-+
-+/**
-+ * Alchemy: walk a raw J2K codestream byte buffer and return the byte
-+ * offsets at which each tile-part ends (= where the next SOT marker, or
-+ * the EOC, begins), relative to the start of the buffer.
-+ *
-+ * Intended for partial-fetch consumers that need to seed a per-discard-
-+ * level byte budget table before invoking opj_read_header / opj_decode.
-+ * The walker is stateless (no codec / no stream) and tolerates truncated
-+ * buffers: when a SOT declares a Psot length whose end extends past the
-+ * available data, the declared end is still recorded (callers use it as
-+ * "wait for at least this many bytes") but no further SOTs are walked.
-+ *
-+ * `out_complete` is set to OPJ_TRUE if the walked list is positively
-+ * known to cover the entire codestream, via one of:
-+ *   1. A walked SOT with Psot=0 (J2K-spec sentinel for "last tile-part").
-+ *   2. The first SOT's TNsot is non-zero and equals the walked count,
-+ *      with every walked tile-part fully present in the buffer.
-+ *   3. The bytes immediately after the last walked tile-part are an EOC
-+ *      marker (0xFF 0xD9).
-+ *
-+ * @param data           pointer to the start of the J2K codestream
-+ * @param size           number of bytes available in @p data
-+ * @param out_ends       caller-supplied array receiving tile-part end
-+ *                       offsets in walk order
-+ * @param out_num_ends   on success, set to the number of entries
-+ *                       written to @p out_ends (always <= @p max_ends)
-+ * @param max_ends       capacity of the @p out_ends array
-+ * @param out_complete   set to OPJ_TRUE iff the walked list is known to
-+ *                       cover the entire codestream (see above)
-+ *
-+ * @return OPJ_TRUE if at least one tile-part end was recorded;
-+ *         OPJ_FALSE on a malformed main header or no SOT present
-+ */
-+OPJ_API OPJ_BOOL OPJ_CALLCONV opj_j2k_walk_tile_part_ends(
-+    const OPJ_BYTE *data,
-+    OPJ_SIZE_T size,
-+    OPJ_SIZE_T *out_ends,
-+    OPJ_UINT32 *out_num_ends,
-+    OPJ_UINT32 max_ends,
-+    OPJ_BOOL *out_complete);
 +
  /*
  ==========================================================
