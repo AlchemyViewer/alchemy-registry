@@ -13,7 +13,10 @@ vcpkg_from_github(
         # Compatible tangents group, weigh and fall back as the MikkTSpace
         # reference does: one reversed partner per edge, triangles with
         # coincident corners left out, its thresholds for a good triangle, its
-        # acos, and its split of exactly opposite tangents in a group.
+        # acos, and its split of exactly opposite tangents in a group, in time
+        # linear in a mesh's size. The vertex weld both tangent modes share
+        # hashes every attribute bit, and sorts the vertices instead when its
+        # table probes too long.
         compatible-tangents-match-mikktspace.patch
 )
 

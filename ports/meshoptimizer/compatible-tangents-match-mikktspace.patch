@@ -1,8 +1,8 @@
 diff --git a/demo/tests.cpp b/demo/tests.cpp
-index 9be331a..75e9862 100644
+index 9be331a..94f3582 100644
 --- a/demo/tests.cpp
 +++ b/demo/tests.cpp
-@@ -3499,6 +3499,274 @@ static void tangentDegenerate()
+@@ -3499,6 +3499,352 @@ static void tangentDegenerate()
  			assert(fabsf(tangents[i * 4 + k] - expected[i][k]) < 1e-3f);
  }
  
@@ -243,41 +243,119 @@ index 9be331a..75e9862 100644
 +		for (size_t k = 0; k < 3; ++k)
 +			for (size_t c = 0; c < 4; ++c)
 +				assert(fabsf(shuffled_tangents[(i * 3 + k) * 4 + c] - fan_tangents[(order[i] * 3 + (k + order[i]) % 3) * 4 + c]) < 1e-5f);
++}
 +
-+	// a fan whose UVs pinch to a point at the hub, so its tangents turn all the way round it and most hub corners are exactly opposite to another;
-+	// splitting them would sum the group once for each, so the group is left whole and every hub corner takes its tangent
-+	std::vector<Vertex> pinched_vertices(1 + count);
-+
-+	const Vertex pole = {0, 0, 0, 0, 0, 1, 0.5f, 0.f};
-+	pinched_vertices[0] = pole;
-+
-+	for (size_t i = 1; i <= count; ++i)
++static void tangentCompatiblePole()
++{
++	struct Vertex
 +	{
-+		float a = 6.2831853f * float(i - 1) / float(count);
++		float px, py, pz;
++		float nx, ny, nz;
++		float tx, ty;
++	};
 +
-+		Vertex& v = pinched_vertices[i];
++	// a sphere's pole as a closed fan whose UVs pinch to a point at the pole, the seam vertex duplicated at u = 1: its tangents turn all the way round
++	// the pole, so nearly every pole corner is exactly opposite to another and leaves it out of the group's sum, which then follows its own triangle;
++	// groups this large split past the cost of summing the group once for each such corner
++	const size_t sizes[] = {100, 256};
++
++	for (size_t s = 0; s < sizeof(sizes) / sizeof(sizes[0]); ++s)
++	{
++		size_t count = sizes[s];
++
++		std::vector<Vertex> vertices(2 + count);
++
++		const Vertex pole = {0, 0, 1, 0, 0, 1, 0.5f, 0.f};
++		vertices[0] = pole;
++
++		for (size_t i = 0; i <= count; ++i)
++		{
++			float a = 6.2831853f * float(i % count) / float(count);
++			float x = 0.3f * cosf(a), y = 0.3f * sinf(a), l = sqrtf(x * x + y * y + 0.95f * 0.95f);
++
++			Vertex& v = vertices[1 + i];
++			v.px = x, v.py = y, v.pz = 0.95f;
++			v.nx = x / l, v.ny = y / l, v.nz = 0.95f / l;
++			v.tx = float(i) / float(count), v.ty = 0.1f;
++		}
++
++		std::vector<unsigned int> indices(count * 3);
++
++		for (size_t i = 0; i < count; ++i)
++			indices[i * 3 + 0] = 0, indices[i * 3 + 1] = unsigned(1 + i), indices[i * 3 + 2] = unsigned(2 + i);
++
++		std::vector<float> tangents(count * 3 * 4);
++		meshopt_generateTangents(&tangents[0], &indices[0], indices.size(), &vertices[0].px, vertices.size(), sizeof(Vertex), &vertices[0].nx, sizeof(Vertex), &vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++
++		size_t following = 0;
++
++		for (size_t i = 0; i < count; ++i)
++		{
++			const float* t = &tangents[i * 12];
++			following += t[0] * t[4] + t[1] * t[5] + t[2] * t[6] > 0.9f;
++		}
++
++		assert(following >= count * 9 / 10);
++	}
++}
++
++static void tangentCompatibleNaN()
++{
++	struct Vertex
++	{
++		float px, py, pz;
++		float nx, ny, nz;
++		float tx, ty;
++	};
++
++	// a closed fan of 100 triangles whose UVs follow its positions, but for two rim points pushed to +-3e38, so the triangle between them has a
++	// tangent that is not a number, and the two beside it none; that triangle's hub corner is opposite to every other, which leave it out of the
++	// group's sum and keep their tangent
++	const size_t count = 100;
++
++	std::vector<Vertex> vertices(1 + count);
++
++	const Vertex hub = {0, 0, 0, 0, 0, 1, 0.5f, 0.5f};
++	vertices[0] = hub;
++
++	for (size_t i = 0; i < count; ++i)
++	{
++		float a = 6.2831853f * float(i) / float(count);
++
++		Vertex& v = vertices[1 + i];
 +		v.px = cosf(a), v.py = sinf(a), v.pz = 0.f;
 +		v.nx = 0.f, v.ny = 0.f, v.nz = 1.f;
-+		v.tx = float(i - 1) / float(count), v.ty = 1.f;
++		v.tx = 0.5f + 2.f * cosf(a), v.ty = 0.5f + 2.f * sinf(a);
 +	}
 +
-+	std::vector<unsigned int> pinched((count - 1) * 3);
++	vertices[6].px = 3e38f;
++	vertices[7].px = -3e38f;
 +
-+	for (size_t i = 0; i < count - 1; ++i)
-+		pinched[i * 3 + 0] = 0, pinched[i * 3 + 1] = unsigned(1 + i), pinched[i * 3 + 2] = unsigned(2 + i);
++	std::vector<unsigned int> indices(count * 3);
 +
-+	std::vector<float> pinched_tangents((count - 1) * 3 * 4);
-+	meshopt_generateTangents(&pinched_tangents[0], &pinched[0], pinched.size(), &pinched_vertices[0].px, pinched_vertices.size(), sizeof(Vertex), &pinched_vertices[0].nx, sizeof(Vertex), &pinched_vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++	for (size_t i = 0; i < count; ++i)
++		indices[i * 3 + 0] = 0, indices[i * 3 + 1] = unsigned(1 + i), indices[i * 3 + 2] = unsigned(1 + (i + 1) % count);
 +
-+	for (size_t i = 0; i < count - 1; ++i)
-+		for (size_t k = 0; k < 4; ++k)
-+			assert(pinched_tangents[i * 12 + k] == pinched_tangents[k]);
++	std::vector<float> tangents(count * 3 * 4);
++	meshopt_generateTangents(&tangents[0], &indices[0], indices.size(), &vertices[0].px, vertices.size(), sizeof(Vertex), &vertices[0].nx, sizeof(Vertex), &vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++
++	for (size_t i = 0; i < count; ++i)
++	{
++		const float* t = &tangents[i * 12];
++
++		if (i == 5)
++			assert(t[0] != t[0]);
++		else if (i == 4 || i == 6)
++			assert(t[0] == 0.f && t[1] == 0.f && t[2] == 0.f);
++		else
++			assert(fabsf(t[0] - 1.f) < 1e-3f && fabsf(t[1]) < 1e-3f && t[2] == 0.f && t[3] == 1.f);
++	}
 +}
 +
  static void normalsBasic()
  {
  	const float vertices[][3] = {
-@@ -3703,6 +3971,10 @@ void runTests()
+@@ -3703,6 +4049,12 @@ void runTests()
  
  	tangentsBasic();
  	tangentDegenerate();
@@ -285,6 +363,8 @@ index 9be331a..75e9862 100644
 +	tangentCompatibleCoincident();
 +	tangentCompatibleOpposite();
 +	tangentCompatibleHub();
++	tangentCompatiblePole();
++	tangentCompatibleNaN();
  	normalsBasic();
  	normalsDegenerate();
  }
@@ -302,7 +382,7 @@ index ff69785..6b62c13 100644
  	/* For vertices only connected to degenerate triangles, output zero tangents instead of an arbitrary fallback.  */
  	meshopt_TangentZeroFallback = 1 << 1,
 diff --git a/src/tangentspace.cpp b/src/tangentspace.cpp
-index f9a60e9..180e0bc 100644
+index f9a60e9..40822f5 100644
 --- a/src/tangentspace.cpp
 +++ b/src/tangentspace.cpp
 @@ -2,6 +2,7 @@
@@ -411,7 +491,197 @@ index f9a60e9..180e0bc 100644
  struct Normal
  {
  	float x, y, z;
-@@ -229,7 +321,8 @@ struct CornerAdjacency
+@@ -134,17 +226,24 @@ struct VertexHasherF
+ 		const unsigned int* n = reinterpret_cast<const unsigned int*>(vertex_normals + index * vertex_normals_stride_float);
+ 		const unsigned int* t = reinterpret_cast<const unsigned int*>(vertex_uvs + index * vertex_uvs_stride_float);
+ 
+-		// mix in normal bits
+-		x ^= (n[0] == 0x80000000) ? 0 : n[0] >> 15;
+-		y ^= (n[1] == 0x80000000) ? 0 : n[1] >> 15;
+-		z ^= (n[2] == 0x80000000) ? 0 : n[2] >> 15;
++		// mix in every normal and texture coordinate bit, so that attributes that differ only in low bits, or only in which UV component holds a value,
++		// do not hash alike
++		unsigned int a[5] = {n[0], n[1], n[2], t[0], t[1]};
++		unsigned int h = (x * 73856093) ^ (y * 19349663) ^ (z * 83492791);
++
++		for (int k = 0; k < 5; ++k)
++		{
++			unsigned int c = (a[k] == 0x80000000) ? 0 : a[k];
++
++			h ^= c + 0x9e3779b9 + (h << 6) + (h >> 2);
++		}
+ 
+-		// collect texture coordinate bits (simplified -0 handling and scrambling)
+-		unsigned int w = (t[0] ^ t[1]) & 0x7fffffff;
+-		w ^= w >> 13;
++		// spread the low bits over the table index
++		h ^= h >> 16;
++		h *= 0x85ebca6b;
++		h ^= h >> 13;
+ 
+-		// Optimized Spatial Hashing for Collision Detection of Deformable Objects
+-		return (x * 73856093) ^ (y * 19349663) ^ (z * 83492791) ^ (w * 50331653);
++		return h;
+ 	}
+ 
+ 	bool equal(unsigned int lhs, unsigned int rhs) const
+@@ -162,6 +261,38 @@ struct VertexHasherF
+ 
+ 		return lp[0] == rp[0] && lp[1] == rp[1] && lp[2] == rp[2] && ln[0] == rn[0] && ln[1] == rn[1] && ln[2] == rn[2] && lt[0] == rt[0] && lt[1] == rt[1];
+ 	}
++
++	// attribute k's bits, position, then normal, then texture coordinates, with negative zero as zero
++	unsigned int word(unsigned int index, int k) const
++	{
++		const float* v;
++
++		if (k < 3)
++			v = vertex_positions + index * vertex_positions_stride_float + k;
++		else if (k < 6)
++			v = vertex_normals + index * vertex_normals_stride_float + (k - 3);
++		else
++			v = vertex_uvs + index * vertex_uvs_stride_float + (k - 6);
++
++		unsigned int bits;
++		memcpy(&bits, v, sizeof(bits));
++
++		return bits == 0x80000000 ? 0 : bits;
++	}
++
++	// orders vertices by their attributes' bits, so that vertices equal() calls equal are adjacent
++	bool less(unsigned int lhs, unsigned int rhs) const
++	{
++		for (int k = 0; k < (PositionOnly ? 3 : 8); ++k)
++		{
++			unsigned int l = word(lhs, k), r = word(rhs, k);
++
++			if (l != r)
++				return l < r;
++		}
++
++		return false;
++	}
+ };
+ 
+ static size_t hashBuckets4(size_t count)
+@@ -173,8 +304,9 @@ static size_t hashBuckets4(size_t count)
+ 	return buckets;
+ }
+ 
++// probes counts the slots looked at
+ template <typename T, typename Hash>
+-static T* hashLookup4(T* table, size_t buckets, const Hash& hash, const T& key, const T& empty)
++static T* hashLookup4(T* table, size_t buckets, const Hash& hash, const T& key, const T& empty, size_t& probes)
+ {
+ 	assert(buckets > 0);
+ 	assert((buckets & (buckets - 1)) == 0);
+@@ -186,6 +318,8 @@ static T* hashLookup4(T* table, size_t buckets, const Hash& hash, const T& key,
+ 	{
+ 		T& item = table[bucket];
+ 
++		probes++;
++
+ 		if (item == empty)
+ 			return &item;
+ 
+@@ -200,6 +334,48 @@ static T* hashLookup4(T* table, size_t buckets, const Hash& hash, const T& key,
+ 	return NULL;
+ }
+ 
++// sorts data by less, keeping the order of elements neither is less than; scratch holds count elements
++template <typename Less>
++static void sortStable(unsigned int* data, unsigned int* scratch, size_t count, const Less& less)
++{
++	unsigned int* source = data;
++	unsigned int* target = scratch;
++
++	for (size_t width = 1; width < count; width *= 2)
++	{
++		for (size_t begin = 0; begin < count; begin += width * 2)
++		{
++			size_t middle = begin + width < count ? begin + width : count;
++			size_t end = begin + width * 2 < count ? begin + width * 2 : count;
++			size_t i = begin, j = middle, k = begin;
++
++			while (i < middle && j < end)
++				target[k++] = less(source[j], source[i]) ? source[j++] : source[i++];
++
++			while (i < middle)
++				target[k++] = source[i++];
++
++			while (j < end)
++				target[k++] = source[j++];
++		}
++
++		unsigned int* swap = source;
++		source = target;
++		target = swap;
++	}
++
++	if (source != data)
++		memcpy(data, source, count * sizeof(unsigned int));
++}
++
++template <typename Hash>
++struct HashLess
++{
++	const Hash& hash;
++
++	bool operator()(unsigned int lhs, unsigned int rhs) const { return hash.less(lhs, rhs); }
++};
++
+ template <bool PositionOnly>
+ static void buildVertexRemap(unsigned int* remap, size_t vertex_count, const float* vertex_positions, size_t vertex_positions_stride, const float* vertex_normals, size_t vertex_normals_stride, const float* vertex_uvs, size_t vertex_uvs_stride, meshopt_Allocator& allocator)
+ {
+@@ -209,10 +385,13 @@ static void buildVertexRemap(unsigned int* remap, size_t vertex_count, const flo
+ 	unsigned int* vertex_table = allocator.allocate<unsigned int>(vertex_table_size);
+ 	memset(vertex_table, -1, vertex_table_size * sizeof(unsigned int));
+ 
+-	for (size_t i = 0; i < vertex_count; ++i)
++	// many more probes than vertices means the hash is failing on this input, which can be made to defeat any one hash; the vertices are then sorted instead
++	size_t probes = 0, probe_budget = vertex_count * 16 + 1024;
++
++	for (size_t i = 0; i < vertex_count && probes <= probe_budget; ++i)
+ 	{
+ 		unsigned int index = unsigned(i);
+-		unsigned int* entry = hashLookup4(vertex_table, vertex_table_size, vertex_hasher, index, ~0u);
++		unsigned int* entry = hashLookup4(vertex_table, vertex_table_size, vertex_hasher, index, ~0u, probes);
+ 
+ 		if (*entry == ~0u)
+ 			*entry = index;
+@@ -221,6 +400,31 @@ static void buildVertexRemap(unsigned int* remap, size_t vertex_count, const flo
+ 	}
+ 
+ 	allocator.deallocate(vertex_table);
++
++	if (probes <= probe_budget)
++		return;
++
++	// sorted, equal vertices are adjacent and in index order, so each takes the first of its run, the vertex the table gives it; equal() never holds for
++	// a vertex with an attribute that is not a number, which sorts beside copies of itself, so such a vertex keeps itself
++	unsigned int* order = allocator.allocate<unsigned int>(vertex_count);
++	unsigned int* scratch = allocator.allocate<unsigned int>(vertex_count);
++
++	for (size_t i = 0; i < vertex_count; ++i)
++		order[i] = unsigned(i);
++
++	HashLess<VertexHasherF<PositionOnly> > less = {vertex_hasher};
++	sortStable(order, scratch, vertex_count, less);
++
++	for (size_t i = 0, first = 0; i < vertex_count; ++i)
++	{
++		if (i > 0 && !vertex_hasher.equal(order[first], order[i]))
++			first = i;
++
++		remap[order[i]] = vertex_hasher.equal(order[first], order[i]) ? order[first] : order[i];
++	}
++
++	allocator.deallocate(scratch);
++	allocator.deallocate(order);
+ }
+ 
+ struct CornerAdjacency
+@@ -229,7 +433,8 @@ struct CornerAdjacency
  	unsigned int* data;
  };
  
@@ -421,17 +691,18 @@ index f9a60e9..180e0bc 100644
  {
  	adjacency.offsets = allocator.allocate<unsigned int>(vertex_count + 1);
  	adjacency.data = allocator.allocate<unsigned int>(index_count);
-@@ -242,6 +335,9 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
+@@ -242,6 +447,10 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
  
  	for (size_t i = 0; i < index_count; ++i)
  	{
-+		if (face_flags && (face_flags[i / 3] & Face_Degenerate))
++		// corners past the last whole triangle have no flags
++		if (face_flags && (i >= face_count * 3 || (face_flags[i / 3] & Face_Degenerate)))
 +			continue;
 +
  		unsigned int v = indices ? remap[indices[i]] : remap[i];
  		assert(v < vertex_count);
  
-@@ -258,11 +354,14 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
+@@ -258,11 +467,14 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
  		offset += count;
  	}
  
@@ -447,7 +718,7 @@ index f9a60e9..180e0bc 100644
  		unsigned int a = indices ? remap[indices[i * 3 + 0]] : remap[i * 3 + 0];
  		unsigned int b = indices ? remap[indices[i * 3 + 1]] : remap[i * 3 + 1];
  		unsigned int c = indices ? remap[indices[i * 3 + 2]] : remap[i * 3 + 2];
-@@ -275,7 +374,7 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
+@@ -275,7 +487,7 @@ static void buildCornerAdjacency(CornerAdjacency& adjacency, const unsigned int*
  
  	// finalize offsets
  	adjacency.offsets[0] = 0;
@@ -456,7 +727,7 @@ index f9a60e9..180e0bc 100644
  }
  
  static unsigned int follow2(unsigned int* parents, unsigned int index)
-@@ -393,7 +492,7 @@ inline float optacos(float x)
+@@ -393,7 +605,7 @@ inline float optacos(float x)
  	return x < 0.f ? 3.1415926f - r : r;
  }
  
@@ -465,7 +736,7 @@ index f9a60e9..180e0bc 100644
  {
  	static const int next[4] = {1, 2, 0, 1};
  
-@@ -450,8 +549,7 @@ static void accumulateTangents(float* result, const unsigned int* groups, const
+@@ -450,8 +662,7 @@ static void accumulateTangents(float* result, const unsigned int* groups, const
  			float w = angle * (sl == 0.f ? 0.f : 1.f / sl);
  
  			// weight larger adjacent triangles more to reduce interpolation artifacts from slivers; this deviates from reference implementation for higher quality
@@ -475,7 +746,7 @@ index f9a60e9..180e0bc 100644
  
  			r[0] += sx * w;
  			r[1] += sy * w;
-@@ -460,6 +558,501 @@ static void accumulateTangents(float* result, const unsigned int* groups, const
+@@ -460,6 +671,807 @@ static void accumulateTangents(float* result, const unsigned int* groups, const
  	}
  }
  
@@ -491,8 +762,9 @@ index f9a60e9..180e0bc 100644
 +
 +// pairs edges around vertex v with their reversed twins; each edge is paired at most once, with the first unpaired reversed edge of a later triangle,
 +// which matches the reference on edges shared by more than two triangles; edges are numbered triangle * 3 + k, edge k running from corner k to the next
-+// an edge only pairs with edges to or from the same vertex, so each neighbor keeps its unpaired edges in a queue, in list order; they all run the same way,
-+// as one running the other way would have paired with them, so each new edge pairs with the first of them if it is reversed, or joins the end
++// an edge only pairs with edges to or from the same vertex, so each neighbor keeps its unpaired edges in two queues, one each way, in list order; each
++// new edge pairs with the first edge of an earlier corner waiting the other way, or joins the end of its own; both edges of a corner can lead to one
++// neighbor when a position that is not a number keeps its triangle from counting as degenerate, and those two never pair with each other
 +static void pairEdgesCompatible(unsigned int* neighbors, unsigned int* pending, unsigned int* around, unsigned int* links, const unsigned int* data, size_t count, unsigned int v, const unsigned int* indices, const unsigned int* remap)
 +{
 +	static const int next[4] = {1, 2, 0, 1};
@@ -515,13 +787,14 @@ index f9a60e9..180e0bc 100644
 +			if (n <= v)
 +				continue;
 +
-+			// pending[n] is the last edge in n's queue, which links back to the first; the low bit of an entry tells which way it runs
++			// queues[k] is the last edge in n's queue of edges running way k, which links back to the first; an entry's position is its index / 2
++			unsigned int* queues = &pending[size_t(n) * 2];
 +			unsigned int e = unsigned(i * 2 + k);
-+			unsigned int last = pending[n];
++			unsigned int other = queues[1 - k];
 +
-+			if (last != ~0u && (last & 1) != unsigned(k))
++			if (other != ~0u && (links[other] >> 1) < i)
 +			{
-+				unsigned int first = links[last];
++				unsigned int first = links[other];
 +
 +				unsigned int ei = pendingEdge(data, e);
 +				unsigned int ej = pendingEdge(data, first);
@@ -529,26 +802,28 @@ index f9a60e9..180e0bc 100644
 +				neighbors[ei] = ej;
 +				neighbors[ej] = ei;
 +
-+				if (first == last)
-+					pending[n] = ~0u;
++				if (first == other)
++					queues[1 - k] = ~0u;
 +				else
-+					links[last] = links[first];
++					links[other] = links[first];
 +			}
 +			else
 +			{
++				unsigned int last = queues[k];
++
 +				links[e] = last == ~0u ? e : links[last];
 +
 +				if (last != ~0u)
 +					links[last] = e;
 +
-+				pending[n] = e;
++				queues[k] = e;
 +			}
 +		}
 +	}
 +
 +	// empty the queues of edges that are left unpaired for the next vertex
 +	for (size_t i = 0; i < count * 2; ++i)
-+		pending[around[i]] = ~0u;
++		pending[size_t(around[i]) * 2 + 0] = pending[size_t(around[i]) * 2 + 1] = ~0u;
 +}
 +
 +// groups corners around each vertex by flood fill across paired edges between triangles of one orientation, visiting group seeds in the reference's order;
@@ -687,11 +962,295 @@ index f9a60e9..180e0bc 100644
 +	}
 +}
 +
++struct KeyLess
++{
++	const unsigned int* keys;
++
++	bool operator()(unsigned int lhs, unsigned int rhs) const { return keys[lhs] < keys[rhs]; }
++};
++
++// the cell, 1/256 a side, of a coordinate within 1.001 of zero, offset to stay positive with its neighbors
++inline unsigned int cellIndex(float x)
++{
++	return unsigned(int(floorf(x * 256.f)) + 512);
++}
++
++inline unsigned int cellKey(unsigned int cx, unsigned int cy, unsigned int cz)
++{
++	return cx | (cy << 10) | (cz << 20);
++}
++
++// calls visit with each member whose vector is in one of the 27 cells around the cell of the opposite of v; sorted lists the members in cells by
++// key, and keys holds their keys in that order
++template <typename Visit>
++static void visitOpposite(const float* v, const unsigned int* sorted, size_t count, const unsigned int* keys, Visit& visit)
++{
++	unsigned int cx = cellIndex(-v[0]), cy = cellIndex(-v[1]), cz = cellIndex(-v[2]);
++
++	for (unsigned int z = cz - 1; z <= cz + 1; ++z)
++		for (unsigned int y = cy - 1; y <= cy + 1; ++y)
++		{
++			// the three cells along x are adjacent in key order
++			unsigned int first = cellKey(cx - 1, y, z);
++			size_t lo = 0, hi = count;
++
++			while (lo < hi)
++			{
++				size_t mid = (lo + hi) / 2;
++
++				if (keys[mid] < first)
++					lo = mid + 1;
++				else
++					hi = mid;
++			}
++
++			for (size_t k = lo; k < count && keys[k] <= first + 2; ++k)
++				visit(sorted[k]);
++		}
++}
++
++// takes from sum each corner exactly opposite to self that it is shown, once; vectors holds each corner's tangent, bitangent and weighted tangent
++struct OppositeVisit
++{
++	const float* vectors;
++	unsigned int* stamp;
++	unsigned int self;
++	int component; // 0 to compare tangents, 3 bitangents, -1 both
++	float* sum;
++	size_t partners, visits;
++
++	void operator()(unsigned int other)
++	{
++		visits++;
++
++		// a partner found through the tangents' cells is not taken again through the bitangents'
++		if (other == self || stamp[other] == self)
++			return;
++
++		const float* si = &vectors[self * 9];
++		const float* sj = &vectors[other * 9];
++
++		bool opposite;
++
++		if (component < 0)
++		{
++			float coss = si[0] * sj[0] + si[1] * sj[1] + si[2] * sj[2];
++			float cost = si[3] * sj[3] + si[4] * sj[4] + si[5] * sj[5];
++
++			opposite = !(coss > -1.f && cost > -1.f);
++		}
++		else
++		{
++			const float* a = si + component;
++			const float* b = sj + component;
++
++			opposite = !(a[0] * b[0] + a[1] * b[1] + a[2] * b[2] > -1.f);
++		}
++
++		if (opposite)
++		{
++			stamp[other] = self;
++			sum[0] -= sj[6];
++			sum[1] -= sj[7];
++			sum[2] -= sj[8];
++			partners++;
++		}
++	}
++};
++
++// splits a group too large to split exactly, members listing its corners in list order: each split corner takes the group's sum without the corners
++// whose vectors are not a number, which are opposite to every corner, less its own exactly opposite partners; this is the reference's result to
++// rounding, and exactly it for a corner whose only partners are those. Vectors whose squared lengths are within 0.999 and 1 + 2^-19 can only be
++// exactly opposite within 1/256 of each other's opposite, as the square of their sum's length is under 2 * 2^-19 plus the dot product's rounding, so
++// such partners are found by cells, the tangents' and the bitangents' apart; vectors shorter than that are opposite to none of them, and corners with
++// a vector that is neither are compared with every corner. A group whose cells hold more candidates than a budget linear in its size, which takes a
++// pole of thousands of triangles or a mesh made to crowd near-opposite tangents together, is left whole, its corners all taking the group's tangent
++static size_t splitTangentGroupApproximately(unsigned int* split, size_t split_count, float* corner_data, unsigned int* local, const unsigned int* members, size_t size, unsigned int* cells, float* vectors, float* sums)
++{
++	enum
++	{
++		Class_NaN = 1 << 0,     // a component of either vector is not a number
++		Class_Other = 1 << 1,   // otherwise, a vector is neither in the cells nor shorter than them
++		Class_Tangent = 1 << 2, // the tangent is in the cells
++		Class_Bitangent = 1 << 3,
++	};
++
++	unsigned int* classes = cells;
++	unsigned int* tangent_keys = cells + size;
++	unsigned int* bitangent_keys = cells + size * 2;
++	unsigned int* tangents = cells + size * 3;
++	unsigned int* bitangents = cells + size * 4;
++	unsigned int* scratch = cells + size * 5;
++	unsigned int* stamp = cells + size * 6;
++
++	size_t nans = 0, tangent_count = 0, bitangent_count = 0;
++	float base[3] = {0.f, 0.f, 0.f};
++
++	for (size_t p = 0; p < size; ++p)
++	{
++		const float* s = &corner_data[local[members[p] * 3] * kCornerData];
++
++		unsigned int c = 0;
++
++		for (int k = 0; k < 6; ++k)
++			c |= (s[k] != s[k]) ? Class_NaN : 0;
++
++		for (int v = 0; v < 2 && !(c & Class_NaN); ++v)
++		{
++			const float* d = s + v * 3;
++			float l = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
++
++			if (l > 0.999f && l < 1.0000019f)
++				c |= v ? Class_Bitangent : Class_Tangent;
++			else if (!(l <= 0.999f))
++				c |= Class_Other;
++		}
++
++		// a corner compared with every other is in no cells
++		if (c & Class_Other)
++			c &= ~(Class_Tangent | Class_Bitangent);
++
++		classes[p] = c;
++		stamp[p] = ~0u;
++		nans += (c & Class_NaN) != 0;
++
++		float* d = &vectors[p * 9];
++
++		for (int k = 0; k < 6; ++k)
++			d[k] = s[k];
++
++		d[6] = s[6] * s[0], d[7] = s[6] * s[1], d[8] = s[6] * s[2];
++
++		tangent_keys[p] = (c & Class_Tangent) ? cellKey(cellIndex(s[0]), cellIndex(s[1]), cellIndex(s[2])) : 0;
++		bitangent_keys[p] = (c & Class_Bitangent) ? cellKey(cellIndex(s[3]), cellIndex(s[4]), cellIndex(s[5])) : 0;
++
++		if (c & Class_Tangent)
++			tangents[tangent_count++] = unsigned(p);
++
++		if (c & Class_Bitangent)
++			bitangents[bitangent_count++] = unsigned(p);
++
++		// the group's sum in list order without the corners that are not a number
++		if ((c & Class_NaN) == 0)
++		{
++			base[0] += s[6] * s[0];
++			base[1] += s[6] * s[1];
++			base[2] += s[6] * s[2];
++		}
++	}
++
++	// a small group compares every pair, which costs less than its cells would
++	bool direct = size <= 128;
++
++	if (!direct)
++	{
++		// the members in cells by key, each list's keys then put in its order
++		KeyLess tangent_less = {tangent_keys};
++		sortStable(tangents, scratch, tangent_count, tangent_less);
++
++		for (size_t k = 0; k < tangent_count; ++k)
++			scratch[k] = tangent_keys[tangents[k]];
++
++		memcpy(tangent_keys, scratch, tangent_count * sizeof(unsigned int));
++
++		KeyLess bitangent_less = {bitangent_keys};
++		sortStable(bitangents, scratch, bitangent_count, bitangent_less);
++
++		for (size_t k = 0; k < bitangent_count; ++k)
++			scratch[k] = bitangent_keys[bitangents[k]];
++
++		memcpy(bitangent_keys, scratch, bitangent_count * sizeof(unsigned int));
++	}
++
++	// the sorts are done with scratch, which now lists the corners compared with every other
++	unsigned int* other_list = scratch;
++	size_t other_count = 0;
++
++	for (size_t p = 0; p < size; ++p)
++		if ((classes[p] & (Class_NaN | Class_Other)) == Class_Other)
++			other_list[other_count++] = unsigned(p);
++
++	size_t budget = size * 64 + 1024, visits = 0;
++
++	for (size_t p = 0; p < size; ++p)
++	{
++		const float* s = &corner_data[local[members[p] * 3] * kCornerData];
++		float* r = &sums[members[p] * 3];
++		unsigned int c = classes[p];
++
++		local[members[p] * 3 + 2] &= ~1u;
++
++		if (c & Class_NaN)
++		{
++			// opposite to every other corner, so its own sum is all it keeps
++			r[0] = r[1] = r[2] = 0.f;
++			r[0] += s[6] * s[0];
++			r[1] += s[6] * s[1];
++			r[2] += s[6] * s[2];
++			local[members[p] * 3 + 2] |= 1;
++			continue;
++		}
++
++		r[0] = base[0], r[1] = base[1], r[2] = base[2];
++
++		OppositeVisit visit = {vectors, stamp, unsigned(p), -1, r, 0, 0};
++
++		if (direct || (c & Class_Other))
++		{
++			for (size_t q = 0; q < size; ++q)
++				if ((classes[q] & Class_NaN) == 0)
++					visit(unsigned(q));
++		}
++		else
++		{
++			for (size_t k = 0; k < other_count; ++k)
++				visit(other_list[k]);
++
++			visit.component = 0;
++
++			if (c & Class_Tangent)
++				visitOpposite(s, tangents, tangent_count, tangent_keys, visit);
++
++			visit.component = 3;
++
++			if (c & Class_Bitangent)
++				visitOpposite(s + 3, bitangents, bitangent_count, bitangent_keys, visit);
++		}
++
++		visits += visit.visits;
++
++		if (!direct && visits > budget)
++		{
++			for (size_t k = 0; k < size; ++k)
++				local[members[k] * 3 + 2] &= ~1u;
++
++			return split_count;
++		}
++
++		if (visit.partners || nans)
++			local[members[p] * 3 + 2] |= 1;
++	}
++
++	for (size_t p = 0; p < size; ++p)
++	{
++		unsigned int i = members[p];
++
++		if (local[i * 3 + 2] & 1)
++		{
++			normalizeNotZero(&sums[i * 3]);
++			memcpy(&corner_data[local[i * 3] * kCornerData], &sums[i * 3], sizeof(float) * 3);
++			split[split_count++] = local[i * 3];
++		}
++	}
++
++	return split_count;
++}
++
 +// the reference leaves out of a good triangle's sum the good triangles of its group whose projected tangent or bitangent is exactly opposite to its own;
 +// for such triangles around vertex v, sums the rest of their group in triangle order into their projected tangent, normalized, and lists their corners
-+// each split sum keeps its own order, so a group with many of them costs its size squared; a group whose pairs or sums would cost more than a budget
-+// linear in its size is left whole, its corners all taking the group's tangent, which bounds a vertex to linear time; real meshes stay far below it
-+static size_t splitTangentGroupsCompatible(unsigned int* split, size_t split_count, float* corner_data, unsigned int* local, unsigned int* buckets, float* sums, const unsigned int* groups, const unsigned char* flags, const unsigned int* data, size_t count)
++// each split sum keeps its own order, so a group with many of them costs its size squared, as at a pole whose UVs pinch to a point, where nearly every
++// corner has an opposite; a group whose pairs or sums would cost more than a budget linear in its size is split by splitTangentGroupApproximately
++static size_t splitTangentGroupsCompatible(unsigned int* split, size_t split_count, float* corner_data, unsigned int* local, unsigned int* buckets, unsigned int* cells, float* vectors, float* sums, const unsigned int* groups, const unsigned char* flags, const unsigned int* data, size_t count)
 +{
 +	// the reference splits groups where vectors are no closer than its angular threshold; its default of 180 degrees rounds to a cosine of -1
 +	const float threshold = -1.f;
@@ -765,11 +1324,17 @@ index f9a60e9..180e0bc 100644
 +		for (size_t k = begin; k < end; ++k)
 +			group_far += (local[order[k] * 3 + 2] & 2) != 0;
 +
-+		// pair tests (far corners by the group) and sum tests (split corners by the group) past this leave the group whole
++		if (group_far == 0 || size < 2)
++			continue;
++
++		// pair tests (far corners by the group) and sum tests (split corners by the group) past this split the group approximately
 +		size_t budget = size * 64 + 1024;
 +
-+		if (group_far == 0 || size < 2 || group_far > budget / (size - 1))
++		if (group_far > budget / (size - 1))
++		{
++			split_count = splitTangentGroupApproximately(split, split_count, corner_data, local, &order[begin], size, cells, vectors, sums);
 +			continue;
++		}
 +
 +		// compare each corner that is far from its root with the rest of its group
 +		size_t marked = 0;
@@ -805,8 +1370,14 @@ index f9a60e9..180e0bc 100644
 +			}
 +		}
 +
-+		if (marked == 0 || marked > budget / size)
++		if (marked == 0)
 +			continue;
++
++		if (marked > budget / size)
++		{
++			split_count = splitTangentGroupApproximately(split, split_count, corner_data, local, &order[begin], size, cells, vectors, sums);
++			continue;
++		}
 +
 +		for (size_t k = begin; k < end; ++k)
 +		{
@@ -888,8 +1459,8 @@ index f9a60e9..180e0bc 100644
 +	unsigned int* neighbors = allocator.allocate<unsigned int>(index_count);
 +	memset(neighbors, -1, index_count * sizeof(unsigned int));
 +
-+	unsigned int* pending = allocator.allocate<unsigned int>(vertex_count);
-+	memset(pending, -1, vertex_count * sizeof(unsigned int));
++	unsigned int* pending = allocator.allocate<unsigned int>(vertex_count * 2);
++	memset(pending, -1, vertex_count * 2 * sizeof(unsigned int));
 +
 +	for (size_t i = 0; i < vertex_count; ++i)
 +		if (adjacency.offsets[i + 1] - adjacency.offsets[i] > 1)
@@ -915,9 +1486,14 @@ index f9a60e9..180e0bc 100644
 +	unsigned int* buckets = allocator.allocate<unsigned int>(index_count);
 +	memset(buckets, -1, index_count * sizeof(unsigned int));
 +
++	// per-group scratch for groups split approximately: classes, two cell keys and two sorted lists per corner, a sort's scratch and a stamp, and
++	// each corner's tangent, bitangent and weighted tangent
++	unsigned int* cells = allocator.allocate<unsigned int>(max_count * 7);
++	float* vectors = allocator.allocate<float>(max_count * 9);
++
 +	for (size_t i = 0; i < vertex_count; ++i)
 +		if (adjacency.offsets[i + 1] - adjacency.offsets[i] > 1)
-+			split_count = splitTangentGroupsCompatible(split, split_count, corner_data, local, buckets, sums, groups, flags, adjacency.data + adjacency.offsets[i], adjacency.offsets[i + 1] - adjacency.offsets[i]);
++			split_count = splitTangentGroupsCompatible(split, split_count, corner_data, local, buckets, cells, vectors, sums, groups, flags, adjacency.data + adjacency.offsets[i], adjacency.offsets[i + 1] - adjacency.offsets[i]);
 +
 +	// finalize tangent vectors by normalizing roots and propagating the rest; corners of triangles that no group reached get the fallback
 +	float fallback = (options & meshopt_TangentZeroFallback) ? 0.f : 1.f;
@@ -926,7 +1502,8 @@ index f9a60e9..180e0bc 100644
 +		if (groups[i] == i)
 +			normalizeNotZero(&result[i * 4]);
 +
-+	for (size_t i = 0; i < index_count; ++i)
++	// corners past the last whole triangle have no flags
++	for (size_t i = 0; i < face_count * 3; ++i)
 +	{
 +		if (flags[i / 3] & Face_Degenerate)
 +			continue;
@@ -977,7 +1554,7 @@ index f9a60e9..180e0bc 100644
  static void accumulateNormals(float* result, const unsigned int* groups, const unsigned int* indices, size_t index_count, const Normal* face_normals, const float* vertex_positions, size_t vertex_positions_stride)
  {
  	static const int next[4] = {1, 2, 0, 1};
-@@ -580,6 +1173,13 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+@@ -580,6 +1592,13 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
  
  	meshopt_Allocator allocator;
  
@@ -991,7 +1568,7 @@ index f9a60e9..180e0bc 100644
  	size_t face_count = index_count / 3;
  
  	// compute vertex remap to unique vertex index
-@@ -588,7 +1188,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+@@ -588,7 +1607,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
  
  	// build adjacency information
  	CornerAdjacency adjacency = {};
@@ -1000,7 +1577,7 @@ index f9a60e9..180e0bc 100644
  
  	// compute per-triangle tangents
  	Tangent* face_tangents = allocator.allocate<Tangent>(face_count);
-@@ -618,7 +1218,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+@@ -618,7 +1637,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
  
  	// accumulate tangents into their own respective groups
  	memset(result, 0, index_count * sizeof(float) * 4);
@@ -1009,7 +1586,7 @@ index f9a60e9..180e0bc 100644
  
  	// finalize tangent signs for each face using facegroups
  	for (size_t i = 0; i < face_count; ++i)
-@@ -672,7 +1272,7 @@ void meshopt_generateNormals(float* result, const unsigned int* indices, size_t
+@@ -672,7 +1691,7 @@ void meshopt_generateNormals(float* result, const unsigned int* indices, size_t
  
  	// build adjacency information
  	CornerAdjacency adjacency = {};
