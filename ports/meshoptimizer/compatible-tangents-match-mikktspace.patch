@@ -1,8 +1,8 @@
 diff --git a/demo/tests.cpp b/demo/tests.cpp
-index 9be331a..4775d17 100644
+index 9be331a..a659cf9 100644
 --- a/demo/tests.cpp
 +++ b/demo/tests.cpp
-@@ -3499,6 +3499,141 @@ static void tangentDegenerate()
+@@ -3499,6 +3499,245 @@ static void tangentDegenerate()
  			assert(fabsf(tangents[i * 4 + k] - expected[i][k]) < 1e-3f);
  }
  
@@ -141,16 +141,121 @@ index 9be331a..4775d17 100644
 +			assert(fabsf(tangents[i * 4 + k] - expected[i][k]) < 1e-3f);
 +}
 +
++static void tangentCompatibleHub()
++{
++	struct Vertex
++	{
++		float px, py, pz;
++		float nx, ny, nz;
++		float tx, ty;
++	};
++
++	// one vertex shared by 20000 triangles, as disjoint triangles around it (a star) and as a closed fan, in order and shuffled; the fan winds
++	// round the vertex 2731 times, so its triangles are not slivers, and rim UVs wobble a little, so the triangles' tangents differ
++	const size_t count = 20000;
++	const size_t step = 2731;
++
++	std::vector<Vertex> star_vertices(1 + count * 2), fan_vertices(1 + count);
++
++	for (int mesh = 0; mesh < 2; ++mesh)
++	{
++		std::vector<Vertex>& vertices = mesh == 0 ? star_vertices : fan_vertices;
++
++		const Vertex hub = {0, 0, 0, 0, 0, 1, 0.5f, 0.5f};
++		vertices[0] = hub;
++
++		for (size_t i = 1; i < vertices.size(); ++i)
++		{
++			// the star's triangles span the same angles as the fan's, between points of the fan's rim
++			size_t k = mesh == 0 ? i / 2 : i - 1;
++			float a = 6.2831853f * float((k * step) % count) / float(count);
++
++			Vertex& v = vertices[i];
++			v.px = cosf(a), v.py = sinf(a), v.pz = 0.f;
++			v.nx = 0.f, v.ny = 0.f, v.nz = 1.f;
++			v.tx = v.px * 0.5f + 0.5f;
++			v.ty = v.py * 0.5f + 0.5f + 0.01f * sinf(float(i) * 7.f);
++		}
++	}
++
++	std::vector<unsigned int> star(count * 3), fan(count * 3), shuffled(count * 3);
++
++	for (size_t i = 0; i < count; ++i)
++	{
++		star[i * 3 + 0] = 0, star[i * 3 + 1] = unsigned(1 + i * 2), star[i * 3 + 2] = unsigned(2 + i * 2);
++		fan[i * 3 + 0] = 0, fan[i * 3 + 1] = unsigned(1 + i), fan[i * 3 + 2] = unsigned(1 + (i + 1) % count);
++	}
++
++	// the fan in another order, each triangle starting at another corner
++	std::vector<unsigned int> order(count);
++
++	for (size_t i = 0; i < count; ++i)
++		order[i] = unsigned(i);
++
++	unsigned int seed = 42;
++
++	for (size_t i = count - 1; i > 0; --i)
++	{
++		seed = seed * 1664525 + 1013904223;
++		size_t j = (seed >> 8) % (i + 1);
++
++		unsigned int t = order[i];
++		order[i] = order[j];
++		order[j] = t;
++	}
++
++	for (size_t i = 0; i < count; ++i)
++		for (size_t k = 0; k < 3; ++k)
++			shuffled[i * 3 + k] = fan[order[i] * 3 + (k + order[i]) % 3];
++
++	std::vector<float> star_tangents(count * 3 * 4), fan_tangents(count * 3 * 4), shuffled_tangents(count * 3 * 4);
++	meshopt_generateTangents(&star_tangents[0], &star[0], count * 3, &star_vertices[0].px, star_vertices.size(), sizeof(Vertex), &star_vertices[0].nx, sizeof(Vertex), &star_vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++	meshopt_generateTangents(&fan_tangents[0], &fan[0], count * 3, &fan_vertices[0].px, fan_vertices.size(), sizeof(Vertex), &fan_vertices[0].nx, sizeof(Vertex), &fan_vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++	meshopt_generateTangents(&shuffled_tangents[0], &shuffled[0], count * 3, &fan_vertices[0].px, fan_vertices.size(), sizeof(Vertex), &fan_vertices[0].nx, sizeof(Vertex), &fan_vertices[0].tx, sizeof(Vertex), meshopt_TangentCompatible);
++
++	// in the star, no edges are shared, so the hub keeps each triangle's own tangent, which differ
++	bool differ = false;
++
++	for (size_t i = 0; i < count; ++i)
++	{
++		const float* t = &star_tangents[i * 12];
++
++		for (size_t k = 0; k < 4; ++k)
++		{
++			assert(fabsf(t[k] - t[4 + k]) < 1e-5f && fabsf(t[k] - t[8 + k]) < 1e-5f);
++			differ |= fabsf(t[k] - star_tangents[k]) > 1e-3f;
++		}
++
++		assert(fabsf(t[0] - 1.f) < 0.1f && t[3] == 1.f);
++	}
++
++	assert(differ);
++
++	// in the fan, the hub has one tangent
++	for (size_t i = 0; i < count; ++i)
++		for (size_t k = 0; k < 4; ++k)
++			assert(fan_tangents[i * 12 + k] == fan_tangents[k]);
++
++	assert(fabsf(fan_tangents[0] - 1.f) < 1e-3f && fan_tangents[3] == 1.f);
++
++	// shuffled, every corner matches the fan's; the hub sums in another order
++	for (size_t i = 0; i < count; ++i)
++		for (size_t k = 0; k < 3; ++k)
++			for (size_t c = 0; c < 4; ++c)
++				assert(fabsf(shuffled_tangents[(i * 3 + k) * 4 + c] - fan_tangents[(order[i] * 3 + (k + order[i]) % 3) * 4 + c]) < 1e-5f);
++}
++
  static void normalsBasic()
  {
  	const float vertices[][3] = {
-@@ -3703,6 +3838,9 @@ void runTests()
+@@ -3703,6 +3942,10 @@ void runTests()
  
  	tangentsBasic();
  	tangentDegenerate();
 +	tangentCompatibleNonManifold();
 +	tangentCompatibleCoincident();
 +	tangentCompatibleOpposite();
++	tangentCompatibleHub();
  	normalsBasic();
  	normalsDegenerate();
  }
@@ -168,7 +273,7 @@ index ff69785..6b62c13 100644
  	/* For vertices only connected to degenerate triangles, output zero tangents instead of an arbitrary fallback.  */
  	meshopt_TangentZeroFallback = 1 << 1,
 diff --git a/src/tangentspace.cpp b/src/tangentspace.cpp
-index f9a60e9..d5e661d 100644
+index f9a60e9..1d28c64 100644
 --- a/src/tangentspace.cpp
 +++ b/src/tangentspace.cpp
 @@ -2,6 +2,7 @@
@@ -341,65 +446,80 @@ index f9a60e9..d5e661d 100644
  
  			r[0] += sx * w;
  			r[1] += sy * w;
-@@ -460,6 +558,404 @@ static void accumulateTangents(float* result, const unsigned int* groups, const
+@@ -460,6 +558,441 @@ static void accumulateTangents(float* result, const unsigned int* groups, const
  	}
  }
  
-+// pairs edges around vertex v with their reversed twins; each edge is paired at most once, with the first unpaired reversed edge of a later triangle,
-+// which matches the reference on edges shared by more than two triangles; edges are numbered triangle * 3 + k, edge k running from corner k to the next
-+static void pairEdgesCompatible(unsigned int* neighbors, unsigned int* around, const unsigned int* data, size_t count, unsigned int v, const unsigned int* indices, const unsigned int* remap)
++// edge from or to vertex v at queue entry e, which is list position * 2 + 0 for the edge that starts at that corner, or + 1 for the edge that ends there
++inline unsigned int pendingEdge(const unsigned int* data, unsigned int e)
 +{
 +	static const int next[4] = {1, 2, 0, 1};
 +
-+	// vertices that follow and precede v in each triangle
++	unsigned int c = data[e >> 1];
++
++	return (c >> 2) * 3 + ((e & 1) ? next[(c & 3) + 1] : (c & 3));
++}
++
++// pairs edges around vertex v with their reversed twins; each edge is paired at most once, with the first unpaired reversed edge of a later triangle,
++// which matches the reference on edges shared by more than two triangles; edges are numbered triangle * 3 + k, edge k running from corner k to the next
++// an edge only pairs with edges to or from the same vertex, so each neighbor keeps its unpaired edges in a queue, in list order; they all run the same way,
++// as one running the other way would have paired with them, so each new edge pairs with the first of them if it is reversed, or joins the end
++static void pairEdgesCompatible(unsigned int* neighbors, unsigned int* pending, unsigned int* around, unsigned int* links, const unsigned int* data, size_t count, unsigned int v, const unsigned int* indices, const unsigned int* remap)
++{
++	static const int next[4] = {1, 2, 0, 1};
++
 +	for (size_t i = 0; i < count; ++i)
 +	{
 +		unsigned int ti = data[i] >> 2;
 +		unsigned int cib = ti * 3 + next[(data[i] & 3) + 0];
 +		unsigned int cic = ti * 3 + next[(data[i] & 3) + 1];
 +
++		// edge v->nib starts at this corner and edge nic->v ends at it
 +		around[i * 2 + 0] = indices ? remap[indices[cib]] : remap[cib];
 +		around[i * 2 + 1] = indices ? remap[indices[cic]] : remap[cic];
-+	}
 +
-+	for (size_t i = 0; i < count; ++i)
-+	{
-+		unsigned int ti = data[i] >> 2;
-+		unsigned int nib = around[i * 2 + 0], nic = around[i * 2 + 1];
-+
-+		// edge v->nib starts at this corner and edge nic->v ends at it; each edge is paired at its lower vertex, so it is only considered once
-+		unsigned int ei = ti * 3 + (data[i] & 3);
-+		unsigned int ec = ti * 3 + next[(data[i] & 3) + 1];
-+
-+		bool pi = nib > v && neighbors[ei] == ~0u;
-+		bool pc = nic > v && neighbors[ec] == ~0u;
-+
-+		for (size_t j = i + 1; j < count && (pi || pc); ++j)
++		for (int k = 0; k < 2; ++k)
 +		{
-+			unsigned int tj = data[j] >> 2;
-+			unsigned int njb = around[j * 2 + 0], njc = around[j * 2 + 1];
++			unsigned int n = around[i * 2 + k];
 +
-+			// v->nib is reversed by njc->v
-+			unsigned int ej = tj * 3 + next[(data[j] & 3) + 1];
++			// each edge is paired at its lower vertex, so it is only considered once
++			if (n <= v)
++				continue;
 +
-+			if (pi && njc == nib && neighbors[ej] == ~0u)
++			// pending[n] is the last edge in n's queue, which links back to the first; the low bit of an entry tells which way it runs
++			unsigned int e = unsigned(i * 2 + k);
++			unsigned int last = pending[n];
++
++			if (last != ~0u && (last & 1) != unsigned(k))
 +			{
++				unsigned int first = links[last];
++
++				unsigned int ei = pendingEdge(data, e);
++				unsigned int ej = pendingEdge(data, first);
++
 +				neighbors[ei] = ej;
 +				neighbors[ej] = ei;
-+				pi = false;
++
++				if (first == last)
++					pending[n] = ~0u;
++				else
++					links[last] = links[first];
 +			}
-+
-+			// nic->v is reversed by v->njb
-+			ej = tj * 3 + (data[j] & 3);
-+
-+			if (pc && njb == nic && neighbors[ej] == ~0u)
++			else
 +			{
-+				neighbors[ec] = ej;
-+				neighbors[ej] = ec;
-+				pc = false;
++				links[e] = last == ~0u ? e : links[last];
++
++				if (last != ~0u)
++					links[last] = e;
++
++				pending[n] = e;
 +			}
 +		}
 +	}
++
++	// empty the queues of edges that are left unpaired for the next vertex
++	for (size_t i = 0; i < count * 2; ++i)
++		pending[around[i]] = ~0u;
 +}
 +
 +// groups corners around each vertex by flood fill across paired edges between triangles of one orientation, visiting group seeds in the reference's order;
@@ -545,31 +665,49 @@ index f9a60e9..d5e661d 100644
 +	// the reference splits groups where vectors are no closer than its angular threshold; its default of 180 degrees rounds to a cosine of -1
 +	const float threshold = -1.f;
 +
-+	// corners of good triangles around this vertex: corner, group, and whether it leaves part of its group out
-+	size_t good = 0;
++	// corners of good triangles around this vertex: corner, group, and whether it leaves part of its group out (1) or is far from its group's root (2)
++	size_t good = 0, far = 0;
 +
 +	for (size_t i = 0; i < count; ++i)
 +	{
 +		unsigned int corner = (data[i] >> 2) * 3 + (data[i] & 3);
 +
-+		if (flags[data[i] >> 2] & Face_Good)
-+		{
-+			local[good * 3 + 0] = corner;
-+			local[good * 3 + 1] = groups[corner];
-+			local[good * 3 + 2] = 0;
-+			good++;
-+		}
++		if ((flags[data[i] >> 2] & Face_Good) == 0)
++			continue;
++
++		// group roots are corners of good triangles around this vertex, so their vectors are computed
++		const float* s = &corner_data[corner * kCornerData];
++		const float* r = &corner_data[groups[corner] * kCornerData];
++
++		// vectors no longer than 1.00005 whose dot with a third such vector is above 0.01 are within 89.43 degrees of it, so under 178.87 degrees apart,
++		// and their computed cosine stays above -0.9999; only pairs with a corner that is not that close to its root can be exactly opposite
++		bool near = s[0] * r[0] + s[1] * r[1] + s[2] * r[2] > 0.01f && s[3] * r[3] + s[4] * r[4] + s[5] * r[5] > 0.01f;
++		near = near && s[0] * s[0] + s[1] * s[1] + s[2] * s[2] < 1.0001f && s[3] * s[3] + s[4] * s[4] + s[5] * s[5] < 1.0001f;
++		near = near && r[0] * r[0] + r[1] * r[1] + r[2] * r[2] < 1.0001f && r[3] * r[3] + r[4] * r[4] + r[5] * r[5] < 1.0001f;
++
++		local[good * 3 + 0] = corner;
++		local[good * 3 + 1] = groups[corner];
++		local[good * 3 + 2] = near ? 0 : 2;
++		good++;
++		far += !near;
 +	}
++
++	if (!far)
++		return split_count;
 +
 +	bool any = false;
 +
-+	for (size_t i = 1; i < good; ++i)
++	// compare each corner that is far from its root with the rest of its group
++	for (size_t i = 0; i < good; ++i)
 +	{
++		if ((local[i * 3 + 2] & 2) == 0)
++			continue;
++
 +		const float* si = &corner_data[local[i * 3] * kCornerData];
 +
-+		for (size_t j = 0; j < i; ++j)
++		for (size_t j = 0; j < good; ++j)
 +		{
-+			if (local[j * 3 + 1] != local[i * 3 + 1])
++			if (j == i || local[j * 3 + 1] != local[i * 3 + 1])
 +				continue;
 +
 +			const float* sj = &corner_data[local[j * 3] * kCornerData];
@@ -579,7 +717,8 @@ index f9a60e9..d5e661d 100644
 +
 +			if (!(coss > threshold && cost > threshold))
 +			{
-+				local[i * 3 + 2] = local[j * 3 + 2] = 1;
++				local[i * 3 + 2] |= 1;
++				local[j * 3 + 2] |= 1;
 +				any = true;
 +			}
 +		}
@@ -590,7 +729,7 @@ index f9a60e9..d5e661d 100644
 +
 +	for (size_t i = 0; i < good; ++i)
 +	{
-+		if (!local[i * 3 + 2])
++		if ((local[i * 3 + 2] & 1) == 0)
 +			continue;
 +
 +		const float* si = &corner_data[local[i * 3] * kCornerData];
@@ -621,7 +760,7 @@ index f9a60e9..d5e661d 100644
 +
 +	// the projected tangents of this vertex are only read above, so they can take the sums now
 +	for (size_t i = 0; i < good; ++i)
-+		if (local[i * 3 + 2])
++		if (local[i * 3 + 2] & 1)
 +		{
 +			memcpy(&corner_data[local[i * 3] * kCornerData], &sums[i * 3], sizeof(float) * 3);
 +			split[split_count++] = local[i * 3];
@@ -655,17 +794,20 @@ index f9a60e9..d5e661d 100644
 +		max_count = count > max_count ? count : max_count;
 +	}
 +
-+	// per-vertex scratch, for edge pairing (two per corner) and group splits (three per corner, and a sum)
-+	unsigned int* local = allocator.allocate<unsigned int>(max_count * 3);
++	// per-vertex scratch, for edge pairing (two neighbors and two queue links per corner) and group splits (three per corner, and a sum)
++	unsigned int* local = allocator.allocate<unsigned int>(max_count * 4);
 +	float* sums = allocator.allocate<float>(max_count * 3);
 +
-+	// pair each edge with at most one reversed edge
++	// pair each edge with at most one reversed edge; queues of unpaired edges per neighbor are emptied after each vertex
 +	unsigned int* neighbors = allocator.allocate<unsigned int>(index_count);
 +	memset(neighbors, -1, index_count * sizeof(unsigned int));
 +
++	unsigned int* pending = allocator.allocate<unsigned int>(vertex_count);
++	memset(pending, -1, vertex_count * sizeof(unsigned int));
++
 +	for (size_t i = 0; i < vertex_count; ++i)
 +		if (adjacency.offsets[i + 1] - adjacency.offsets[i] > 1)
-+			pairEdgesCompatible(neighbors, local, adjacency.data + adjacency.offsets[i], adjacency.offsets[i + 1] - adjacency.offsets[i], unsigned(i), indices, remap);
++			pairEdgesCompatible(neighbors, pending, local, local + max_count * 2, adjacency.data + adjacency.offsets[i], adjacency.offsets[i + 1] - adjacency.offsets[i], unsigned(i), indices, remap);
 +
 +	// compute per-corner tangent groups
 +	unsigned int* groups = allocator.allocate<unsigned int>(index_count);
@@ -746,7 +888,7 @@ index f9a60e9..d5e661d 100644
  static void accumulateNormals(float* result, const unsigned int* groups, const unsigned int* indices, size_t index_count, const Normal* face_normals, const float* vertex_positions, size_t vertex_positions_stride)
  {
  	static const int next[4] = {1, 2, 0, 1};
-@@ -580,6 +1076,13 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+@@ -580,6 +1113,13 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
  
  	meshopt_Allocator allocator;
  
@@ -760,7 +902,7 @@ index f9a60e9..d5e661d 100644
  	size_t face_count = index_count / 3;
  
  	// compute vertex remap to unique vertex index
-@@ -588,7 +1091,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+@@ -588,7 +1128,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
  
  	// build adjacency information
  	CornerAdjacency adjacency = {};
@@ -769,7 +911,7 @@ index f9a60e9..d5e661d 100644
  
  	// compute per-triangle tangents
  	Tangent* face_tangents = allocator.allocate<Tangent>(face_count);
-@@ -618,7 +1121,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
+@@ -618,7 +1158,7 @@ void meshopt_generateTangents(float* result, const unsigned int* indices, size_t
  
  	// accumulate tangents into their own respective groups
  	memset(result, 0, index_count * sizeof(float) * 4);
@@ -778,7 +920,7 @@ index f9a60e9..d5e661d 100644
  
  	// finalize tangent signs for each face using facegroups
  	for (size_t i = 0; i < face_count; ++i)
-@@ -672,7 +1175,7 @@ void meshopt_generateNormals(float* result, const unsigned int* indices, size_t
+@@ -672,7 +1212,7 @@ void meshopt_generateNormals(float* result, const unsigned int* indices, size_t
  
  	// build adjacency information
  	CornerAdjacency adjacency = {};
