@@ -18,6 +18,10 @@ vcpkg_from_github(
         # hashes every attribute bit, and sorts the vertices instead when its
         # table probes too long.
         compatible-tangents-match-mikktspace.patch
+        # generateVertexRemap(Multi) and filterIndexBuffer(Multi) sort the
+        # vertices instead when their table probes too long, which input can
+        # be made to force against the hash, and number them the same.
+        vertex-remap-probe-budget.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
