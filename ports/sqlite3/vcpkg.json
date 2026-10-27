@@ -1,0 +1,90 @@
+{
+  "name": "sqlite3",
+  "version": "3.54.1",
+  "description": "SQLite is a software library that implements a self-contained, serverless, zero-configuration, transactional SQL database engine. Alchemy's build: multi-thread mode (no connection shared between threads), WAL synchronous NORMAL by default, no double-quoted strings, no memory statistics, no deprecated or shared-cache API, and the recover API (ext/recover) built into the library.",
+  "homepage": "https://sqlite.org",
+  "license": "blessing",
+  "supports": "!uwp",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ],
+  "default-features": [
+    "json1"
+  ],
+  "features": {
+    "dbpage-vtab": {
+      "description": "Enable the sqlite_dbpage virtual table (always on in this build: the recover API reads pages through it)"
+    },
+    "dbstat": {
+      "description": "Enable the DBSTAT virtual table"
+    },
+    "fts3": {
+      "description": "Enable the FTS3 extension"
+    },
+    "fts4": {
+      "description": "Enable the FTS4 extension"
+    },
+    "fts5": {
+      "description": "Enable the FTS5 extension"
+    },
+    "geopoly": {
+      "description": "Enable geopoly functionality for sqlite3"
+    },
+    "json1": {
+      "description": "Enable JSON functionality for sqlite3"
+    },
+    "limit": {
+      "description": "Enable the UPDATE/DELETE LIMIT clause"
+    },
+    "math": {
+      "description": "Enable math functions"
+    },
+    "memsys3": {
+      "description": "Enable MEMSYS3"
+    },
+    "memsys5": {
+      "description": "Enable MEMSYS5"
+    },
+    "omit-load-extension": {
+      "description": "Enable loading of external extensions"
+    },
+    "percentile": {
+      "description": "Enable the aggregate functions percentile, percentile_cont, percentile_disc, and median"
+    },
+    "rtree": {
+      "description": "Enable the RTREE extension"
+    },
+    "session": {
+      "description": "Enable the SESSION extension"
+    },
+    "snapshot": {
+      "description": "Enable the snapshot function"
+    },
+    "soundex": {
+      "description": "Enable the SOUNDEX scalar function"
+    },
+    "tool": {
+      "description": "Build sqlite3 executable",
+      "supports": "!uwp"
+    },
+    "unicode": {
+      "description": "Enable unicode support",
+      "dependencies": [
+        "icu"
+      ]
+    },
+    "zlib": {
+      "description": "Build sqlite3 command line tool with zlib support; has no effect on the library itself",
+      "dependencies": [
+        "zlib"
+      ]
+    }
+  }
+}
