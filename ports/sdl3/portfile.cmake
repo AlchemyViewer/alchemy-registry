@@ -4,11 +4,14 @@
 # clipboard manager serves a copy of its data; on X11 when a TARGETS reply
 # arrives after it has taken the clipboard back -- so pasting its own copy
 # back comes up empty. Drop when a release carries main's equivalent.
+# 3.4.20 skips the origin check for a clipboard manager's copy when no source
+# is held as the selection arrives (725f63e); the patch also covers a source
+# cancelled while that check is still reading the origin.
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO libsdl-org/SDL
     REF "release-${VERSION}"
-    SHA512 12fcb5592016b27922b08d1580d75f5f15c72e67cf04415e2bd824dc7563ac940c25bbe368b03d0a755f5832803049467e3d0ee6784ed3684792bc4d7741af50
+    SHA512 8b2c4596f51a2e49e0b54629f440b17952562ec0d403e7852b0148487c89a0f2a28cfe0e700a6bb3278b0191d3eff30b5e0cddc2498783180c16806d4b943173
     HEAD_REF main
     PATCHES
         fix-freebsd.patch
@@ -36,6 +39,16 @@ if (VCPKG_TARGET_IS_EMSCRIPTEN)
             emscripten-pthreads     SDL_PTHREADS
     )
     vcpkg_list(APPEND FEATURE_OPTIONS "${EMSCRIPTEN_FEATURE_OPTIONS}")
+endif()
+
+# macos-keyboard-grab: SDL_SetWindowKeyboardGrab() only switches off the
+# system's global hotkeys (Cmd-Tab, Mission Control, ...) when SDL is built
+# with SDL_MAC_NO_SANDBOX, which SDL's CMake never defines. The call behind it
+# is private API, so sandboxed and App Store builds must leave this off. SDL
+# builds its .m files as C, so the C flags reach them.
+if ("macos-keyboard-grab" IN_LIST FEATURES)
+    string(APPEND VCPKG_C_FLAGS " -DSDL_MAC_NO_SANDBOX")
+    string(APPEND VCPKG_CXX_FLAGS " -DSDL_MAC_NO_SANDBOX")
 endif()
 
 if ("x11" IN_LIST FEATURES)
