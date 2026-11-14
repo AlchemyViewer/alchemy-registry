@@ -109,7 +109,7 @@
       "port-version": 2
     },
     "sentry-cocoa": {
-      "baseline": "9.30.1",
+      "baseline": "9.34.0",
       "port-version": 0
     },
     "sentry-native": {
