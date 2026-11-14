@@ -101,8 +101,8 @@
       "port-version": 4
     },
     "sdl3": {
-      "baseline": "3.4.18",
-      "port-version": 1
+      "baseline": "3.4.20",
+      "port-version": 0
     },
     "secondlife-emoji-shortcodes": {
       "baseline": "17.0.0",
