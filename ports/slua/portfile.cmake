@@ -4,13 +4,11 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO secondlife/slua
     REF "v${VERSION}"
-    SHA512 e5d0e78a8cf5462b754000eff8838c5f871459d358c86a3cb4be03ee2b12d9fa9c758b49dcc36aa8fd382fe8b0dc8ffd939d10c9fe6e12f177b3f45dd1603e30
+    SHA512 aed353909b0f1973dcb3c06e771678bd5a42ac382c678223cfe2fb5f83be67d376ab0b11bc8db09a0ac2210f58e1f61257ee4a3495d146ef21cd380102dbf4f8
     HEAD_REF main
     PATCHES
         cmake-config-export.patch
         builtins-add-to-table.patch
-        lsl-debug-lines.patch
-        lsl-jump-direction.patch
         parallel-checks.patch
 )
 
@@ -32,18 +30,11 @@ vcpkg_from_github(
 # ones embedded in the library are loaded only into an empty table, so a
 # host's own, loaded first, are not defined twice, and a host adding what
 # another grid's definitions have that the table lacks has them added
-# (builtins-add-to-table.patch). It can record each instruction's LSL line,
-# as Luau's own compiler does at debug level 1, where asked for: off by
-# default, as the server compiles, so the bytecode is the server's unless a
-# caller wants the lines -- a viewer weighing a script line by line
-# (lsl-debug-lines.patch). A jump is forward or backward by where its label
-# stands against it in the script, not by where the two nodes were allocated,
-# which the compiler compared: the same script was JUMP one compile and
-# JUMPBACK, two bytes larger and an interrupt check different, the next
-# (lsl-jump-direction.patch). Modules checked in parallel share nothing a
+# (builtins-add-to-table.patch). Modules checked in parallel share nothing a
 # check writes: each has its own internal error reporter, as upstream Luau
 # now gives it, and free types' indices come from atomic counters
-# (parallel-checks.patch).
+# (parallel-checks.patch). The LSL compiler's optional debug lines and its
+# jump direction, once patched here, are upstream since 0.732.17.
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS
