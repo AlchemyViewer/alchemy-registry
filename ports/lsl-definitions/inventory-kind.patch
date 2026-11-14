@@ -1,6 +1,8 @@
---- a/lsl_definitions/lsl_definitions.yaml	2026-10-06 16:52:54
-+++ b/lsl_definitions/lsl_definitions.yaml	2026-10-06 16:52:54
-@@ -9324,6 +9324,7 @@
+diff --git a/lsl_definitions/lsl_definitions.yaml b/lsl_definitions/lsl_definitions.yaml
+index 53b93a1..03a8e57 100644
+--- a/lsl_definitions/lsl_definitions.yaml
++++ b/lsl_definitions/lsl_definitions.yaml
+@@ -9620,6 +9620,7 @@ functions:
            empty string to suppress sounds.
          type: string
          asset-semantics: true
@@ -8,7 +10,7 @@
      - impact_volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -9344,6 +9345,7 @@
+@@ -9640,6 +9641,7 @@ functions:
            or an empty string to suppress sprites.
          type: string
          asset-semantics: true
@@ -16,23 +18,23 @@
      deprecated: true
      energy: 10.0
      func-id: 161
-@@ -10134,6 +10136,7 @@
-         tooltip: Name of the target notecard.
+@@ -10431,6 +10433,7 @@ functions:
+         tooltip: Name of the notecard in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
 +        inventory-kind: notecard
      - pattern:
          tooltip: Regular expression pattern to search for.
          type: string
-@@ -10160,6 +10163,7 @@
-         tooltip: Name of a notecard in the prim's inventory, or a UUID.
+@@ -10456,6 +10459,7 @@ functions:
+         tooltip: Name of the notecard in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
 +        inventory-kind: notecard
      - pattern:
          tooltip: Regular expression pattern to search for.
          type: string
-@@ -10864,6 +10868,7 @@
+@@ -11214,6 +11218,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory.
          type: string
@@ -40,7 +42,7 @@
      energy: 10.0
      func-id: 529
      must-use: true
-@@ -10878,6 +10883,7 @@
+@@ -11228,6 +11233,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory.
          type: string
@@ -48,7 +50,7 @@
      energy: 10.0
      func-id: 291
      must-use: true
-@@ -10891,6 +10897,7 @@
+@@ -11241,6 +11247,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory.
          type: string
@@ -56,7 +58,7 @@
      energy: 10.0
      func-id: 543
      must-use: true
-@@ -10904,6 +10911,7 @@
+@@ -11254,6 +11261,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory.
          type: string
@@ -64,7 +66,7 @@
      energy: 10.0
      func-id: 175
      must-use: true
-@@ -10950,6 +10958,7 @@
+@@ -11300,6 +11308,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory.
          type: string
@@ -72,7 +74,7 @@
      - group:
          tooltip: MASK_* group (e.g., MASK_BASE, MASK_OWNER, MASK_GROUP,
            MASK_EVERYONE, or MASK_NEXT) to get.
-@@ -10970,6 +10979,7 @@
+@@ -11320,6 +11329,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory.
          type: string
@@ -80,23 +82,23 @@
      energy: 10.0
      func-id: 301
      must-use: true
-@@ -11309,6 +11319,7 @@
+@@ -11659,6 +11669,7 @@ functions:
          tooltip: Name of the notecard in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
 +        inventory-kind: notecard
      - line:
-         tooltip: Zero-based line number to request.
+         tooltip: Index of the line to read.
          type: integer
-@@ -11330,6 +11341,7 @@
+@@ -11680,6 +11691,7 @@ functions:
          tooltip: Name of the notecard in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
 +        inventory-kind: notecard
      - line:
-         tooltip: Zero-based line number to request.
+         tooltip: Index of the line to read.
          type: integer
-@@ -11351,6 +11363,7 @@
+@@ -11701,6 +11713,7 @@ functions:
          tooltip: Name of the notecard in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -104,7 +106,7 @@
      energy: 10.0
      func-id: 276
      return: key
-@@ -12002,6 +12015,7 @@
+@@ -12352,6 +12365,7 @@ functions:
      - script:
          tooltip: Name of the script in the prim's inventory.
          type: string
@@ -112,7 +114,7 @@
      energy: 10.0
      func-id: 250
      must-use: true
-@@ -12395,6 +12409,7 @@
+@@ -12747,6 +12761,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory to transfer.
          type: string
@@ -120,7 +122,7 @@
      energy: 10.0
      func-id: 150
      return: void
-@@ -12954,6 +12969,7 @@
+@@ -13306,6 +13321,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -128,7 +130,7 @@
      - volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -13954,6 +13970,7 @@
+@@ -14309,6 +14325,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -136,7 +138,7 @@
      - volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -13972,6 +13989,7 @@
+@@ -14327,6 +14344,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -144,7 +146,7 @@
      - volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -13990,6 +14008,7 @@
+@@ -14345,6 +14363,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -152,7 +154,7 @@
      - volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -14039,6 +14058,7 @@
+@@ -14394,6 +14413,7 @@ functions:
          tooltip: Name of a texture in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -160,7 +162,7 @@
      - offset:
          tooltip: Offset relative to the prim's position (expressed in local
            coordinates; completely ignored by the system).
-@@ -14074,6 +14094,7 @@
+@@ -14429,6 +14449,7 @@ functions:
          tooltip: Name of a texture in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -168,7 +170,7 @@
      - offset:
          tooltip: Offset relative to the prim's position (expressed in local
            coordinates; completely ignored by the system).
-@@ -14111,6 +14132,7 @@
+@@ -14466,6 +14487,7 @@ functions:
          tooltip: Name of a texture in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -176,7 +178,7 @@
      - offset:
          tooltip: Offset relative to the prim's position (expressed in local
            coordinates; completely ignored by the system).
-@@ -14149,6 +14171,7 @@
+@@ -14504,6 +14526,7 @@ functions:
          tooltip: Name of a texture in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -184,7 +186,7 @@
      - offset:
          tooltip: Offset relative to the prim's position (expressed in local
            coordinates; completely ignored by the system).
-@@ -14628,6 +14651,7 @@
+@@ -14985,6 +15008,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -192,7 +194,7 @@
      - volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -14648,6 +14672,7 @@
+@@ -15005,6 +15029,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -200,7 +202,7 @@
      - volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -14701,6 +14726,7 @@
+@@ -15058,6 +15083,7 @@ functions:
          tooltip: Name of the sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -208,7 +210,7 @@
      energy: 10.0
      func-id: 93
      return: void
-@@ -14912,6 +14938,7 @@
+@@ -15270,6 +15296,7 @@ functions:
      - script:
          tooltip: Name of the script in the prim's inventory.
          type: string
@@ -216,7 +218,7 @@
      - running:
          tooltip: Boolean. If TRUE, sets the copied script to run immediately; if FALSE,
            leaves it stopped.
-@@ -14938,6 +14965,7 @@
+@@ -15296,6 +15323,7 @@ functions:
      - script:
          tooltip: Name of the script in the prim's inventory.
          type: string
@@ -224,7 +226,7 @@
      - pin:
          tooltip: Integer PIN code (must match the PIN set on the ObjectID via
            llSetRemoteScriptAccessPin).
-@@ -14994,6 +15022,7 @@
+@@ -15352,6 +15380,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory to remove.
          type: string
@@ -232,7 +234,7 @@
      energy: 10.0
      func-id: 151
      return: void
-@@ -15030,6 +15059,7 @@
+@@ -15388,6 +15417,7 @@ functions:
            (or empty string/NULL_KEY to clear).
          type: string
          asset-semantics: true
@@ -240,7 +242,7 @@
      energy: 10.0
      experience: true
      func-id: 713
-@@ -15056,6 +15086,7 @@
+@@ -15414,6 +15444,7 @@ functions:
            (or empty string/NULL_KEY to clear).
          type: string
          asset-semantics: true
@@ -248,7 +250,7 @@
      - track_no:
          tooltip: "The elevation track to change (0: water, 1: ground, 2: 1000m, 3:
            2000m, 4: 3000m, -1: all tracks)."
-@@ -15164,6 +15195,7 @@
+@@ -15522,6 +15553,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory.
          type: string
@@ -256,7 +258,7 @@
      energy: 10.0
      func-id: 156
      return: key
-@@ -15309,6 +15341,7 @@
+@@ -15667,6 +15699,7 @@ functions:
      - script:
          tooltip: Name of the target script in the prim's inventory.
          type: string
@@ -264,7 +266,7 @@
      energy: 10.0
      func-id: 249
      return: void
-@@ -15384,6 +15417,7 @@
+@@ -15742,6 +15775,7 @@ functions:
      - item:
          tooltip: Name of the object in the prim's inventory to rez.
          type: string
@@ -272,7 +274,7 @@
      - pos:
          tooltip: Position vector in region coordinates where the root of the object
            will be placed.
-@@ -15413,6 +15447,7 @@
+@@ -15771,6 +15805,7 @@ functions:
      - item:
          tooltip: Name of the object in the prim's inventory to rez.
          type: string
@@ -280,7 +282,7 @@
      - pos:
          tooltip: Position vector in region coordinates where the center of the
            object will be placed.
-@@ -15442,6 +15477,7 @@
+@@ -15800,6 +15835,7 @@ functions:
      - item:
          tooltip: Name of the object in the prim's inventory to rez.
          type: string
@@ -288,7 +290,7 @@
      - options:
          tooltip: A list of REZ_* options to configure the rezzed object's attributes.
          type: list
-@@ -16019,6 +16055,7 @@
+@@ -16377,6 +16413,7 @@ functions:
          tooltip: Name of an animation in the prim's inventory, or a built-in
            animation name.
          type: string
@@ -296,7 +298,7 @@
      energy: 10.0
      func-id: 501
      return: void
-@@ -16284,6 +16321,7 @@
+@@ -16643,6 +16680,7 @@ functions:
      - item:
          tooltip: Name of the item in the prim's inventory.
          type: string
@@ -304,7 +306,7 @@
      - group:
          tooltip: MASK_* group (e.g., MASK_BASE, MASK_OWNER, MASK_GROUP,
            MASK_EVERYONE, or MASK_NEXT) to set.
-@@ -16494,6 +16532,7 @@
+@@ -16855,6 +16893,7 @@ functions:
          tooltip: Name of a material in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -312,7 +314,7 @@
      - face:
          tooltip: Face number or ALL_SIDES.
          type: integer
-@@ -16536,6 +16575,7 @@
+@@ -16897,6 +16936,7 @@ functions:
          tooltip: Name of a texture in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -320,7 +322,7 @@
      - face:
          tooltip: Face number or ALL_SIDES.
          type: integer
-@@ -16884,6 +16924,7 @@
+@@ -17246,6 +17286,7 @@ functions:
          tooltip: Name of a material in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -328,7 +330,7 @@
      - face:
          tooltip: Face number or ALL_SIDES.
          type: integer
-@@ -16933,6 +16974,7 @@
+@@ -17295,6 +17336,7 @@ functions:
      - script:
          tooltip: Name of the script in the prim's inventory.
          type: string
@@ -336,7 +338,7 @@
      - running:
          tooltip: Boolean. If TRUE, enables the script; if FALSE, disables it.
          type: integer
-@@ -17036,6 +17078,7 @@
+@@ -17398,6 +17440,7 @@ functions:
          tooltip: Name of a texture in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -344,7 +346,7 @@
      - face:
          tooltip: Face number or ALL_SIDES.
          type: integer
-@@ -17356,6 +17399,7 @@
+@@ -17718,6 +17761,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -352,7 +354,7 @@
      - volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -17385,6 +17429,7 @@
+@@ -17747,6 +17791,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -360,7 +362,7 @@
      deprecated:
        use: ll.PreloadSound
        selene-replace: ["ll.PreloadSound(%1)"]
-@@ -17420,6 +17465,7 @@
+@@ -17782,6 +17827,7 @@ functions:
          tooltip: Name of the animation in the prim's inventory, or the built-in
            animation name.
          type: string
@@ -368,7 +370,7 @@
      energy: 10.0
      func-id: 129
      return: void
-@@ -17439,6 +17485,7 @@
+@@ -17801,6 +17847,7 @@ functions:
          tooltip: Name of the animation in the prim's inventory, or the built-in
            animation name.
          type: string
@@ -376,7 +378,7 @@
      energy: 10.0
      func-id: 504
      return: void
-@@ -17454,6 +17501,7 @@
+@@ -17816,6 +17863,7 @@ functions:
            animation, or the built-in animation name.
          type: string
          asset-semantics: true
@@ -384,7 +386,7 @@
      energy: 10.0
      func-id: 130
      return: void
-@@ -17506,6 +17554,7 @@
+@@ -17868,6 +17916,7 @@ functions:
            animation, or the built-in animation name.
          type: string
          asset-semantics: true
@@ -392,7 +394,7 @@
      energy: 10.0
      func-id: 505
      return: void
-@@ -17755,6 +17804,7 @@
+@@ -18117,6 +18166,7 @@ functions:
          tooltip: Name of the landmark in the prim's inventory, or an empty string to
            teleport locally.
          type: string
@@ -400,7 +402,7 @@
      - position:
          tooltip: Position vector in local region coordinates to teleport to if
            landmark is empty.
-@@ -17929,6 +17979,7 @@
+@@ -18291,6 +18341,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true
@@ -408,7 +410,7 @@
      - volume:
          tooltip: Volume level to set, between 0.0 (silent) and 1.0 (loud).
          type: float
-@@ -17947,6 +17998,7 @@
+@@ -18309,6 +18360,7 @@ functions:
          tooltip: Name of a sound in the prim's inventory, or a UUID.
          type: string
          asset-semantics: true

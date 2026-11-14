@@ -4,13 +4,13 @@ set(VCPKG_POLICY_EMPTY_INCLUDE_FOLDER enabled)
 # carries a fourth, and it carries a CI run id that follows from nothing.
 set(LSL_TAG "v${VERSION}")
 string(REGEX MATCH "^[0-9]+[.][0-9]+[.][0-9]+" LSL_ASSET_VERSION "${VERSION}")
-set(LSL_BUILD "34724367572")
+set(LSL_BUILD "41900331988")
 
 vcpkg_download_distfile(
     LSL_ARCHIVE
     URLS "https://github.com/secondlife/lsl-definitions/releases/download/${LSL_TAG}/lsl_definitions-${LSL_ASSET_VERSION}-common-${LSL_BUILD}.tar.zst"
     FILENAME lsl-definitions.${VERSION}.tar.zst
-    SHA512 8d8043ea0b5bd57c474b0a7445a39a16b32e3b4bbd8e0832611b4dc50ed0bf4b9a32b96e26dce118380d52b3336d58a5c3591b84fb509c1b9e8c51461a88afbd
+    SHA512 5d14b0069b10e19410bc247fee75f121b2e977b957490d4adbf340381413297c66f2f086badbf35fd8033fe51b0859f41c37d7f725e41aed098c43178f62a8c1
 )
 
 # inventory-kind.patch says, of each argument that names an item in the
